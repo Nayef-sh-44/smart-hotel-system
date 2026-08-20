@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900 font-sans antialiased transition-colors duration-300 dark:bg-dark-950 dark:text-slate-100;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply bg-white/90 backdrop-blur-xl border border-slate-200 shadow-sm rounded-2xl transition-all duration-300 
+           dark:bg-dark-900/70 dark:border-slate-800/80 dark:shadow-glass;
+  }
+  
+  .glass-card {
+    @apply bg-white backdrop-blur-md border border-slate-200 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 
+           dark:bg-dark-900/50 dark:border-slate-800/60 dark:shadow-lg dark:hover:border-brand-500/50;
+  }
+
+  .btn-primary {
+    @apply px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-medium rounded-xl shadow-sm hover:shadow transition-all duration-200 active:scale-95 flex items-center justify-center gap-2
+           dark:bg-gradient-to-r dark:from-brand-600 dark:to-brand-500 dark:hover:from-brand-500 dark:hover:to-brand-400 dark:shadow-lg dark:shadow-brand-600/30;
+  }
+
+  .btn-secondary {
+    @apply px-5 py-2.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 hover:border-slate-300 text-slate-700 font-medium rounded-xl transition-all duration-200 active:scale-95 flex items-center justify-center gap-2
+           dark:bg-slate-800/80 dark:hover:bg-slate-700/80 dark:border-slate-700 dark:hover:border-slate-600 dark:text-slate-200;
+  }
+
+  .btn-accent {
+    @apply px-5 py-2.5 bg-accent-500 hover:bg-accent-600 text-white font-semibold rounded-xl shadow-sm hover:shadow transition-all duration-200 active:scale-95 flex items-center justify-center gap-2
+           dark:bg-gradient-to-r dark:from-accent-600 dark:to-accent-500 dark:hover:to-amber-400 dark:text-dark-950 dark:shadow-lg dark:shadow-accent-500/30;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .input-field {
+    @apply w-full px-4 py-2.5 bg-white border border-slate-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 rounded-xl text-slate-900 placeholder-slate-400 outline-none transition-all duration-200
+           dark:bg-dark-900/80 dark:border-slate-800 dark:text-slate-100 dark:placeholder-slate-500;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+.dark ::-webkit-scrollbar-track {
+  background: #090d16;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #1e293b;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}

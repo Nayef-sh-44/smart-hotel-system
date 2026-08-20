@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "puppeteer-core": "^25.7.0",
+    "sequelize": "^6.37.8",
+    "tedious": "^20.0.0"
+  }
+}
