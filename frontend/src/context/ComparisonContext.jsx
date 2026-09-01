@@ -36,6 +36,11 @@ export const ComparisonProvider = ({ children }) => {
     setSelectedHotels([]);
   };
 
+  const setComparison = (hotels) => {
+    setSelectedHotels(hotels);
+    toast.success('Loaded saved comparison');
+  };
+
   const isSelected = (id) => selectedHotels.some((h) => h.id === id);
 
   return (
@@ -45,6 +50,7 @@ export const ComparisonProvider = ({ children }) => {
         toggleComparison,
         removeHotel,
         clearComparison,
+        setComparison,
         isSelected,
         count: selectedHotels.length,
       }}

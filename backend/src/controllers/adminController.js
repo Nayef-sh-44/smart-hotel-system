@@ -4,6 +4,9 @@ import {
   Booking,
   City,
   Review,
+  Favorite,
+  FlashDeal,
+  LoyaltyTransaction,
   sequelize,
 } from '../models/index.js';
 import bcrypt from 'bcryptjs';
@@ -54,6 +57,62 @@ export const getAllUsers = async (req, res, next) => {
   }
 };
 
+export const createUser = async (req, res, next) => {
+  const t = await sequelize.transaction();
+  try {
+    const { full_name, email, password, phone_number, role } = req.body;
+    
+    // Check if user exists
+    const existingUser = await User.findOne({ where: { email }, transaction: t });
+    if (existingUser) {
+      await t.rollback();
+      return res.status(400).json({ success: false, error: { message: 'Email is already registered' } });
+    }
+    
+    const salt = await bcrypt.genSalt(10);
+    const password_hash = await bcrypt.hash(password, salt);
+    
+    let hotel_id = null;
+    
+    if (role === 'hotel_manager') {
+      // Find a city to link to
+      const city = await City.findOne({ transaction: t });
+      
+      const randomImgId = Math.floor(Math.random() * 150) + 1;
+      const formattedImgId = randomImgId.toString().padStart(3, '0');
+
+      const newHotel = await Hotel.create({
+        name: `${full_name}'s Hotel`,
+        description: `A brand new hotel managed by ${full_name}.`,
+        city_id: city ? city.id : 1,
+        address: 'Central District',
+        latitude: 0,
+        longitude: 0,
+        stars: 4,
+        base_price: 100,
+        main_image: `/images/hotels/hotel-${formattedImgId}/main.jpg`
+      }, { transaction: t });
+      
+      hotel_id = newHotel.id;
+    }
+    
+    const newUser = await User.create({
+      full_name,
+      email,
+      password_hash,
+      phone_number,
+      role: role || 'user',
+      hotel_id
+    }, { transaction: t });
+    
+    await t.commit();
+    res.status(201).json({ success: true, message: 'User created successfully.', data: { user: { id: newUser.id, email: newUser.email, role: newUser.role, hotel_id: newUser.hotel_id } } });
+  } catch (err) {
+    await t.rollback();
+    next(err);
+  }
+};
+
 export const updateUserRole = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -63,14 +122,73 @@ export const updateUserRole = async (req, res, next) => {
       return res.status(404).json({ success: false, error: { message: 'User not found', status: 404 } });
     }
 
+    const newRole = role || user.role;
+    let newHotelId = hotel_id !== undefined ? (hotel_id ? Number(hotel_id) : null) : user.hotel_id;
+
+    if (newRole !== 'hotel_manager') {
+       newHotelId = null;
+    }
+
+    if (newRole === 'hotel_manager') {
+       if (!newHotelId) {
+          // A manager must have a hotel_id but we might be upgrading them without one? Wait, the UI must send it.
+          // The instructions say "Creation/update validation must enforce: Hotel Manager: exactly one hotel_id"
+          return res.status(400).json({ success: false, error: { message: 'Hotel Manager must be assigned to a hotel.', status: 400 } });
+       }
+       const existing = await User.findOne({ where: { role: 'hotel_manager', hotel_id: newHotelId } });
+       if (existing && existing.id !== user.id) {
+          return res.status(400).json({ success: false, error: { message: 'This hotel is already assigned to another manager.', status: 400 } });
+       }
+    }
+
     await user.update({
-      role: role || user.role,
-      hotel_id: hotel_id !== undefined ? (hotel_id ? Number(hotel_id) : null) : user.hotel_id,
+      role: newRole,
+      hotel_id: newHotelId,
       updated_at: new Date(),
     });
 
     res.status(200).json({ success: true, data: user, message: 'User role updated.' });
   } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteUser = async (req, res, next) => {
+  const t = await sequelize.transaction();
+  try {
+    const { id } = req.params;
+    if (Number(id) === req.user.id) {
+      await t.rollback();
+      return res.status(403).json({ success: false, error: { message: 'You cannot delete your own account', status: 403 } });
+    }
+    const user = await User.findByPk(id, { transaction: t });
+    if (!user) {
+      await t.rollback();
+      return res.status(404).json({ success: false, error: { message: 'User not found', status: 404 } });
+    }
+
+    const hotelIdToDelete = user.hotel_id;
+
+    await user.destroy({ transaction: t });
+    
+    // Also delete the hotel if this was a hotel_manager
+    if (hotelIdToDelete) {
+      const hotel = await Hotel.findByPk(hotelIdToDelete, { transaction: t });
+      if (hotel) {
+        // Handle NO ACTION constraints by deleting dependent records first
+        await Booking.destroy({ where: { hotel_id: hotelIdToDelete }, transaction: t });
+        await Favorite.destroy({ where: { hotel_id: hotelIdToDelete }, transaction: t });
+        await FlashDeal.destroy({ where: { hotel_id: hotelIdToDelete }, transaction: t });
+        await LoyaltyTransaction.destroy({ where: { hotel_id: hotelIdToDelete }, transaction: t });
+
+        await hotel.destroy({ transaction: t });
+      }
+    }
+    
+    await t.commit();
+    res.status(200).json({ success: true, message: 'User and associated hotel deleted successfully.' });
+  } catch (error) {
+    await t.rollback();
     next(error);
   }
 };
@@ -143,8 +261,8 @@ export const createHotel = async (req, res, next) => {
       name,
       city_id: Number(city_id),
       address,
-      latitude: latitude || 48.8566,
-      longitude: longitude || 2.3522,
+      latitude: latitude || 0.0,
+      longitude: longitude || 0.0,
       star_rating: star_rating || 4.5,
       base_price_per_night: base_price_per_night || 150.00,
       check_in_time: '15:00:00',

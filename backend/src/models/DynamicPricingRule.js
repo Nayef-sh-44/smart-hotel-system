@@ -36,6 +36,19 @@ const DynamicPricingRule = sequelize.define('DynamicPricingRule', {
     allowNull: false,
     defaultValue: 1.0,
   },
+  // New fields for date-based pricing
+  rule_type: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  rule_target: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  multiplier: {
+    type: DataTypes.DECIMAL(5, 2),
+    allowNull: true,
+  },
   reason: {
     type: DataTypes.STRING,
     allowNull: true,

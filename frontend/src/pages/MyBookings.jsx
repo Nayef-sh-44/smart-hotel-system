@@ -253,16 +253,16 @@ export default function MyBookings() {
                   </div>
 
                   <div className="flex flex-row md:flex-col items-center md:items-end justify-between md:justify-center gap-3 shrink-0 pt-4 md:pt-0 border-t md:border-t-0 border-slate-200">
-                    <div className="text-right mb-2">
-                      {b.tax_amount != null && (
-                        <div className="mb-1">
-                          <span className="text-[10px] font-semibold text-slate-500 uppercase block">Base: {symbol}{formatPrice(Number(b.total_price) - Number(b.tax_amount))}</span>
-                          <span className="text-[10px] font-semibold text-slate-500 uppercase block">Taxes & Fees: {symbol}{formatPrice(b.tax_amount)}</span>
-                        </div>
-                      )}
-                      <span className="text-xs font-bold text-slate-500 uppercase">Total Paid</span>
-                      <p className="text-3xl font-extrabold text-slate-900">{symbol}{formatPrice(b.total_price)}</p>
-                    </div>
+                      <div className="text-right mb-2">
+                        {b.tax_amount != null && (
+                          <div className="mb-1">
+                            <span className="text-[10px] font-semibold text-slate-500 uppercase block">Base: {symbol}{formatPrice(Number(b.total_price) - Number(b.tax_amount), b.currency || b.hotel?.currency || 'EUR')}</span>
+                            <span className="text-[10px] font-semibold text-slate-500 uppercase block">Taxes & Fees: {symbol}{formatPrice(b.tax_amount, b.currency || b.hotel?.currency || 'EUR')}</span>
+                          </div>
+                        )}
+                        <span className="text-xs font-bold text-slate-500 uppercase">Total Paid</span>
+                        <p className="text-3xl font-extrabold text-slate-900">{symbol}{formatPrice(b.total_price, b.currency || b.hotel?.currency || 'EUR')}</p>
+                      </div>
 
                     {editingId === b.id ? (
                       <div className="flex gap-2">

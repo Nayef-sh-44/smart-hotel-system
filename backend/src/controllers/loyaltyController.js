@@ -6,91 +6,71 @@ import {
   UserRewardInstance,
   Booking,
   LoyaltyConfig,
+  Hotel,
   sequelize,
 } from '../models/index.js';
 import { Op } from 'sequelize';
 
-export const getMyLoyalty = async (req, res, next) => {
+export const getMyBalances = async (req, res, next) => {
   try {
-    let loyalty = await UserLoyalty.findOne({
+    const balances = await UserLoyalty.findAll({
       where: { user_id: req.user.id },
       include: [
-        {
-          model: LoyaltyLevel,
-          as: 'level',
-        },
+        { model: LoyaltyLevel, as: 'level' },
+        { model: Hotel, as: 'hotel', attributes: ['id', 'name', 'city_id'] }
+      ],
+      order: [['current_points', 'DESC']]
+    });
+
+    res.status(200).json({
+      success: true,
+      data: balances,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getLoyaltyForHotel = async (req, res, next) => {
+  try {
+    const { hotelId } = req.params;
+
+    if (!hotelId) {
+      return res.status(400).json({ success: false, error: { message: 'Hotel ID is required' } });
+    }
+
+    let loyalty = await UserLoyalty.findOne({
+      where: { user_id: req.user.id, hotel_id: hotelId },
+      include: [
+        { model: LoyaltyLevel, as: 'level' },
       ],
     });
 
     if (!loyalty) {
       loyalty = await UserLoyalty.create({
         user_id: req.user.id,
+        hotel_id: hotelId,
         current_points: 0,
         lifetime_points: 0,
         level_id: 1,
       });
     }
 
-    // Sync missing points from past eligible bookings
-    const todayStr = new Date().toISOString().split('T')[0];
-    const eligibleBookings = await Booking.findAll({
-      where: {
-        user_id: req.user.id,
-        status: { [Op.ne]: 'cancelled' },
-        [Op.or]: [
-          { status: 'completed' },
-          { check_out_date: { [Op.lte]: todayStr } }
-        ]
-      },
-    });
-    console.log("ALL NON-CANCELLED BOOKINGS:", eligibleBookings.map(b => ({ id: b.id, check_out_date: b.check_out_date, status: b.status, lte: b.check_out_date <= todayStr })));
-    console.log("ELIGIBLE BOOKINGS:", eligibleBookings.length, eligibleBookings.map(b => b.id));
 
-    for (const booking of eligibleBookings) {
-      const descriptionStr = `Points earned from booking ${booking.booking_reference}`;
-      const existingTx = await LoyaltyTransaction.findOne({
-        where: {
-          user_id: req.user.id,
-          transaction_type: 'earned',
-          description: descriptionStr,
-        },
-      });
-
-      if (!existingTx) {
-        const config = await LoyaltyConfig.findOne();
-        const pointsPerCurrency = config ? Number(config.points_per_currency) : 10;
-        const pointsEarned = Math.round(Number(booking.total_price) * pointsPerCurrency);
-
-        if (pointsEarned > 0) {
-          await loyalty.update({
-            current_points: loyalty.current_points + pointsEarned,
-            lifetime_points: loyalty.lifetime_points + pointsEarned,
-            updated_at: new Date(),
-          });
-
-          await LoyaltyTransaction.create({
-            user_id: req.user.id,
-            transaction_type: 'earned',
-            points: pointsEarned,
-            description: descriptionStr,
-          });
-        }
-      }
-    }
 
     const transactions = await LoyaltyTransaction.findAll({
-      where: { user_id: req.user.id },
+      where: { user_id: req.user.id, hotel_id: hotelId },
       order: [['created_at', 'DESC']],
       limit: 10,
     });
 
     const rewards = await LoyaltyReward.findAll({
-      where: { is_active: true },
+      where: { hotel_id: hotelId, is_active: true },
       order: [['points_cost', 'ASC']],
     });
 
     const rewardInstances = await UserRewardInstance.findAll({
-      where: { user_id: req.user.id },
+      where: { user_id: req.user.id, hotel_id: hotelId },
       include: [{ model: LoyaltyReward, as: 'reward' }],
       order: [['created_at', 'DESC']],
     });
@@ -100,7 +80,7 @@ export const getMyLoyalty = async (req, res, next) => {
       return {
         ...json,
         title: json.reward_name,
-        description: `Redeem ${json.reward_name} (${json.reward_type}: €${json.reward_value} discount) for your next luxury booking.`,
+        description: `Redeem ${json.reward_name} (${json.reward_type}: $${json.reward_value} discount) for your next booking at this hotel.`,
       };
     });
 
@@ -132,26 +112,27 @@ export const getMyLoyalty = async (req, res, next) => {
 export const redeemReward = async (req, res, next) => {
   const transaction = await sequelize.transaction();
   try {
-    const { reward_id } = req.body;
-    if (!reward_id) {
+    const { reward_id, hotel_id } = req.body;
+    
+    if (!reward_id || !hotel_id) {
       await transaction.rollback();
       return res.status(400).json({
         success: false,
-        error: { message: 'reward_id is required', status: 400 },
+        error: { message: 'reward_id and hotel_id are required', status: 400 },
       });
     }
 
     const reward = await LoyaltyReward.findByPk(reward_id, { transaction });
-    if (!reward || !reward.is_active) {
+    if (!reward || !reward.is_active || reward.hotel_id !== parseInt(hotel_id)) {
       await transaction.rollback();
       return res.status(404).json({
         success: false,
-        error: { message: 'Reward not found or inactive', status: 404 },
+        error: { message: 'Reward not found, inactive, or belongs to another hotel', status: 404 },
       });
     }
 
     const userLoyalty = await UserLoyalty.findOne({
-      where: { user_id: req.user.id },
+      where: { user_id: req.user.id, hotel_id: hotel_id },
       transaction,
     });
 
@@ -159,7 +140,7 @@ export const redeemReward = async (req, res, next) => {
       await transaction.rollback();
       return res.status(400).json({
         success: false,
-        error: { message: 'Insufficient loyalty points to redeem this reward.', status: 400 },
+        error: { message: 'Insufficient loyalty points in this hotel to redeem this reward.', status: 400 },
       });
     }
 
@@ -173,6 +154,7 @@ export const redeemReward = async (req, res, next) => {
     // Record transaction
     await LoyaltyTransaction.create({
       user_id: req.user.id,
+      hotel_id: hotel_id,
       transaction_type: 'redeemed',
       points: -reward.points_cost,
       description: `Redeemed reward: ${reward.reward_name}`,
@@ -182,6 +164,7 @@ export const redeemReward = async (req, res, next) => {
     const instance = await UserRewardInstance.create({
       user_id: req.user.id,
       reward_id: reward.id,
+      hotel_id: hotel_id,
       is_redeemed: false,
     }, { transaction });
 
@@ -190,7 +173,7 @@ export const redeemReward = async (req, res, next) => {
     res.status(200).json({
       success: true,
       data: instance,
-      message: 'Reward redeemed successfully.',
+      message: 'Reward redeemed successfully for this hotel.',
     });
   } catch (error) {
     await transaction.rollback();

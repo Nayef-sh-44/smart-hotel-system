@@ -20,9 +20,8 @@ export function RoleGuard({ children, allowedRoles, allowUnauthenticated = false
     return <Navigate to="/login" replace />;
   }
 
-  // User is authenticated, check role
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    if (user.role === 'system_admin') return <Navigate to="/admin" replace />;
+    if (user.role === 'admin' || user.role === 'system_admin') return <Navigate to="/admin" replace />;
     if (user.role === 'hotel_manager') return <Navigate to="/manager" replace />;
     return <Navigate to="/hotels" replace />;
   }
@@ -37,7 +36,7 @@ export function AuthGuard({ children }) {
   if (loading) return null;
 
   if (user) {
-    if (user.role === 'system_admin') return <Navigate to="/admin" replace />;
+    if (user.role === 'admin' || user.role === 'system_admin') return <Navigate to="/admin" replace />;
     if (user.role === 'hotel_manager') return <Navigate to="/manager" replace />;
     return <Navigate to="/hotels" replace />;
   }

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import { hotelService, reviewService, bookingService, loyaltyService } from '../services/api.js';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { hotelService, reviewService, bookingService, loyaltyService, favoriteService } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useComparison } from '../context/ComparisonContext.jsx';
 import { useCurrency } from '../hooks/useCurrency.js';
+import { getImageUrl } from '../utils/imageUtils.js';
 import toast from 'react-hot-toast';
 import {
   Star,
@@ -25,8 +26,11 @@ import {
   ArrowLeft,
   Navigation,
   Compass,
-  Map as MapLucide,
-  Loader2
+  Tag,
+  Shield,
+  Loader2,
+  Heart,
+  Map as MapLucide
 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, CircleMarker, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -66,6 +70,8 @@ function MapUpdater({ selectedHotel }) {
 
 export default function HotelDetail() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const rewardParam = searchParams.get('reward');
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
   const { toggleComparison, isSelected } = useComparison();
@@ -74,11 +80,15 @@ export default function HotelDetail() {
   const [hotel, setHotel] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [togglingFavorite, setTogglingFavorite] = useState(false);
 
   // Booking Modal State
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [pendingReward, setPendingReward] = useState(null);
+  const [applyReward, setApplyReward] = useState(false);
+  const [loyaltyPoints, setLoyaltyPoints] = useState(0);
   const [checkInDate, setCheckInDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() + 1);
@@ -175,9 +185,64 @@ export default function HotelDetail() {
     }
   };
 
+  const fetchFavoriteStatus = async () => {
+    if (isAuthenticated) {
+      try {
+        const res = await favoriteService.getAll();
+        if (res.success) {
+          const isFav = res.data.some(fav => fav.hotel_id === Number(id));
+          setIsFavorited(isFav);
+        }
+      } catch (err) {
+        console.error('Could not fetch favorite status', err);
+      }
+    }
+  };
+
+  const toggleFavorite = async () => {
+    if (!isAuthenticated) {
+      toast.error('Please login to save favorites.');
+      return;
+    }
+    setTogglingFavorite(true);
+    try {
+      if (isFavorited) {
+        await favoriteService.remove(id);
+        setIsFavorited(false);
+        toast.success('Removed from favorites.');
+      } else {
+        await favoriteService.add(id);
+        setIsFavorited(true);
+        toast.success('Added to favorites.');
+      }
+    } catch (err) {
+      toast.error('Could not update favorite status.');
+    } finally {
+      setTogglingFavorite(false);
+    }
+  };
+
+  const fetchRewardDetails = async () => {
+    if (rewardParam && isAuthenticated) {
+      try {
+        const res = await loyaltyService.getLoyaltyForHotel(id);
+        if (res.success && res.data && res.data.rewards) {
+          const rew = res.data.rewards.find(r => r.id === Number(rewardParam));
+          if (rew) {
+            setPendingReward({ reward: rew });
+          }
+        }
+      } catch (e) {
+        console.error('Could not fetch reward details', e);
+      }
+    }
+  };
+
   useEffect(() => {
     fetchHotelDetails();
-  }, [id]);
+    fetchFavoriteStatus();
+    fetchRewardDetails();
+  }, [id, isAuthenticated, rewardParam]);
 
   if (loading) {
     return (
@@ -225,7 +290,10 @@ export default function HotelDetail() {
     setBookingModalOpen(true);
 
     try {
-      const res = await loyaltyService.getMyLoyalty();
+      const res = await loyaltyService.getLoyaltyForHotel(id);
+      if (res.success && res.data) {
+        setLoyaltyPoints(res.data.points || 0);
+      }
       if (res.success && res.data.rewardInstances) {
         const unredeemed = res.data.rewardInstances.filter(r => !r.is_redeemed);
         if (unredeemed.length > 0) {
@@ -253,10 +321,15 @@ export default function HotelDetail() {
         check_out_date: checkOutDate,
         num_guests: Number(numGuests),
         special_requests: specialRequests,
+        reward_id: applyReward && pendingReward ? pendingReward.reward.id : null,
       });
 
       if (res.success) {
-        toast.success(`Booking confirmed! Ref: ${res.data.booking_reference}`);
+        if (res.data.loyalty_points_earned > 0) {
+          toast.success(`Booking confirmed! You earned ${res.data.loyalty_points_earned} loyalty points at this hotel.`);
+        } else {
+          toast.success(`Booking confirmed! Ref: ${res.data.booking_reference}`);
+        }
         setBookingModalOpen(false);
         navigate('/my-bookings');
       }
@@ -330,12 +403,13 @@ export default function HotelDetail() {
 
             <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white mb-2">{hotel.name}</h1>
 
-            <p className="text-sm text-slate-600 dark:text-slate-400 flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-brand-400 shrink-0" />
-              <span>
-                {hotel.address} — {hotel.city ? `${hotel.city.name}, ${hotel.city.country}` : ''}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 text-sm text-slate-600 dark:text-slate-400">
+              <span className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-brand-400 shrink-0" />
+                {hotel.address}
+                {hotel.city && ` - ${hotel.city.name}`}
               </span>
-            </p>
+            </div>
           </div>
 
           <div className="flex items-center gap-3">
@@ -350,6 +424,21 @@ export default function HotelDetail() {
               <Scale className="w-4 h-4" />
               <span>{selected ? 'In Comparison' : 'Compare'}</span>
             </button>
+            
+            {isAuthenticated && (
+              <button
+                onClick={toggleFavorite}
+                disabled={togglingFavorite}
+                className={`px-4 py-2.5 rounded-xl border text-sm font-semibold transition-all flex items-center gap-2 ${
+                  isFavorited
+                    ? 'bg-rose-50 border-rose-200 text-rose-600 dark:bg-rose-500/10 dark:border-rose-500/30 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-500/20'
+                    : 'bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200 dark:bg-slate-800/80 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700/80'
+                }`}
+              >
+                <Heart className={`w-4 h-4 ${isFavorited ? 'fill-current text-rose-500' : ''}`} />
+                <span>{isFavorited ? 'Saved' : 'Save'}</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -357,7 +446,7 @@ export default function HotelDetail() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 rounded-3xl overflow-hidden">
           <div className="md:col-span-2 h-80 sm:h-96 relative bg-slate-200 dark:bg-slate-800">
             <img
-              src={hotel.primary_image_url || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1200&q=80'}
+              src={hotel.images?.[0] ? getImageUrl(hotel.images[0].image_url) : (hotel.primary_image_url ? getImageUrl(hotel.primary_image_url) : 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1200&q=80')}
               alt={hotel.name}
               className="w-full h-full object-cover"
               onError={(e) => {
@@ -365,17 +454,18 @@ export default function HotelDetail() {
               }}
             />
           </div>
+          
           <div className="hidden md:flex flex-col gap-4 h-96">
             <div className="h-1/2 rounded-2xl overflow-hidden bg-slate-200 dark:bg-slate-800">
               <img
-                src={hotel.images?.[0]?.image_url || 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=600&q=80'}
+                src={hotel.images?.[1] ? getImageUrl(hotel.images[1].image_url) : 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=600&q=80'}
                 alt="Suite View"
                 className="w-full h-full object-cover"
               />
             </div>
             <div className="h-1/2 rounded-2xl overflow-hidden bg-slate-200 dark:bg-slate-800">
               <img
-                src={hotel.images?.[1]?.image_url || 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=600&q=80'}
+                src={hotel.images?.[2] ? getImageUrl(hotel.images[2].image_url) : 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=600&q=80'}
                 alt="Interior"
                 className="w-full h-full object-cover"
               />
@@ -437,30 +527,36 @@ export default function HotelDetail() {
             <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-6">Available Suites & Rooms</h3>
             <div className="space-y-4">
               {hotel.rooms && hotel.rooms.length > 0 ? (
-                hotel.rooms.map((room) => (
+                hotel.rooms.filter(room => room.status !== 'unavailable').map((room) => (
                   <div
                     key={room.id}
-                    className="p-5 rounded-2xl bg-slate-50 dark:bg-dark-950/60 border border-slate-200 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                    className="p-5 rounded-2xl bg-slate-50 dark:bg-dark-950/60 border border-slate-200 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-start justify-between gap-4"
                   >
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <h4 className="text-base font-bold text-slate-900 dark:text-white capitalize">
-                          {room.room_type} Suite
-                        </h4>
-                        {room.available_rooms > 0 ? (
-                          <span className="badge bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                            {room.available_rooms} Left
-                          </span>
-                        ) : (
-                          <span className="badge bg-rose-500/10 text-rose-400 border border-rose-500/30">
-                            Sold Out
-                          </span>
-                        )}
+                    <div className="flex flex-col sm:flex-row gap-4 w-full">
+                      {room.images && room.images.length > 0 && (
+                        <div className="w-full sm:w-32 h-24 rounded-lg overflow-hidden shrink-0 border border-slate-200">
+                          <img src={getImageUrl(room.images[0].image_url)} alt="Room Suite" className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="text-base font-bold text-slate-900 dark:text-white capitalize">
+                            {room.room_type} Suite
+                          </h4>
+                          {room.available_rooms > 0 && room.is_available ? (
+                            <span className="badge bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                              {room.available_rooms} Left
+                            </span>
+                          ) : (
+                            <span className="badge bg-rose-500/10 text-rose-400 border border-rose-500/30">
+                              Sold Out
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
+                          Max Capacity: {room.capacity} Guest{room.capacity > 1 ? 's' : ''} — Free Cancellation up to 48 hours
+                        </p>
                       </div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
-                        Max Capacity: {room.capacity} Guest{room.capacity > 1 ? 's' : ''} — Free
-                        Cancellation up to 48 hours
-                      </p>
                     </div>
 
                     <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0">
@@ -473,7 +569,7 @@ export default function HotelDetail() {
 
                       <button
                         onClick={() => handleOpenBookingModal(room)}
-                        disabled={room.available_rooms < 1}
+                        disabled={room.available_rooms < 1 || !room.is_available}
                         className="btn-primary text-xs py-2 px-5 disabled:opacity-40 disabled:pointer-events-none"
                       >
                         <span>Book Room</span>
@@ -754,7 +850,7 @@ export default function HotelDetail() {
               {(() => {
                 const rawPrice = Number(selectedRoom.price_per_night) * Math.max(1, nights);
                 let discount = 0;
-                if (pendingReward && pendingReward.reward) {
+                if (pendingReward && pendingReward.reward && applyReward) {
                   if (pendingReward.reward.reward_type === 'percentage_discount') {
                     discount = rawPrice * (Number(pendingReward.reward.reward_value) / 100);
                   } else {
@@ -776,9 +872,41 @@ export default function HotelDetail() {
                       <span>{nights} Night{nights > 1 ? 's' : ''}</span>
                     </div>
                     {pendingReward && (
-                      <div className="flex justify-between text-brand-400 font-bold">
-                        <span>Loyalty Reward ({pendingReward.reward.reward_name})</span>
-                        <span>-{symbol}{formatPrice(discount)}</span>
+                      <div className="flex flex-col gap-2 mt-4">
+                        {!applyReward ? (
+                          <div className="bg-brand-50 dark:bg-brand-900/20 p-3 rounded-lg flex items-center justify-between border border-brand-200 dark:border-brand-800">
+                            <div>
+                              <p className="text-xs font-bold text-brand-700 dark:text-brand-400">🎁 Loyalty Reward Available</p>
+                              <p className="text-[10px] text-brand-600 dark:text-brand-500">
+                                {pendingReward.reward.reward_name}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setApplyReward(true)}
+                              className="px-3 py-1 bg-brand-500 text-white rounded text-xs font-bold hover:bg-brand-600"
+                            >
+                              Use Reward
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="bg-emerald-50 dark:bg-emerald-900/20 p-3 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                            <div className="flex items-center justify-between mb-1">
+                              <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400">✓ Loyalty Reward Applied</p>
+                              <button
+                                type="button"
+                                onClick={() => setApplyReward(false)}
+                                className="text-[10px] text-emerald-600 underline hover:text-emerald-700"
+                              >
+                                Remove Reward
+                              </button>
+                            </div>
+                            <div className="flex justify-between text-emerald-600 font-bold text-sm">
+                              <span>Discount:</span>
+                              <span>-{symbol}{formatPrice(discount)}</span>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                     <div className="flex justify-between text-slate-300">

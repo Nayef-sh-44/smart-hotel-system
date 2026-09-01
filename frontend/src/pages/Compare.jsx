@@ -19,10 +19,13 @@ import {
   Sparkles,
   HelpCircle,
   Download,
+  Trash2,
+  FolderOpen,
+  Calendar,
 } from 'lucide-react';
 
 export default function Compare() {
-  const { selectedHotels, removeHotel, clearComparison } = useComparison();
+  const { selectedHotels, removeHotel, clearComparison, setComparison } = useComparison();
   const { isAuthenticated } = useAuth();
   const { symbol, formatPrice } = useCurrency();
   const navigate = useNavigate();
@@ -34,6 +37,27 @@ export default function Compare() {
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [listTitle, setListTitle] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // Saved Comparisons state
+  const [savedComparisons, setSavedComparisons] = useState([]);
+  const [loadingSaved, setLoadingSaved] = useState(false);
+
+  const fetchSavedComparisons = async () => {
+    if (!isAuthenticated) return;
+    setLoadingSaved(true);
+    try {
+      const res = await comparisonService.getSaved();
+      if (res.success) setSavedComparisons(res.data);
+    } catch (err) {
+      console.error('Failed to load saved comparisons');
+    } finally {
+      setLoadingSaved(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSavedComparisons();
+  }, [isAuthenticated]);
 
   const fetchComparisonMatrix = async () => {
     if (selectedHotels.length < 2) {
@@ -87,12 +111,73 @@ export default function Compare() {
         toast.success('Comparison list saved to your account!');
         setSaveModalOpen(false);
         setListTitle('');
+        fetchSavedComparisons();
       }
     } catch (err) {
       toast.error(err.error?.message || 'Could not save comparison list.');
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleOpenSaved = (saved) => {
+    const ids = saved.hotel_ids.split(',').map(id => ({ id: Number(id), name: `Hotel #${id}` }));
+    setComparison(ids);
+  };
+
+  const handleDeleteSaved = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this saved comparison?')) return;
+    try {
+      const res = await comparisonService.deleteSaved(id);
+      if (res.success) {
+        toast.success('Deleted saved comparison.');
+        fetchSavedComparisons();
+      }
+    } catch (err) {
+      toast.error('Failed to delete comparison.');
+    }
+  };
+
+  const renderSavedComparisons = () => {
+    if (!isAuthenticated) return null;
+    return (
+      <div className="mt-12 w-full max-w-4xl mx-auto px-4">
+        <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-6">
+          <BookmarkPlus className="w-5 h-5 text-brand-500" />
+          Your Saved Comparisons
+        </h3>
+        
+        {loadingSaved ? (
+          <div className="text-center text-slate-500 py-8 animate-pulse">Loading saved comparisons...</div>
+        ) : savedComparisons.length === 0 ? (
+          <div className="text-center py-8 glass-panel text-slate-500">
+            You don't have any saved comparisons yet.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {savedComparisons.map(saved => (
+              <div key={saved.id} className="glass-card p-5 flex flex-col justify-between">
+                <div>
+                  <h4 className="font-bold text-slate-900 dark:text-white text-lg mb-1">{saved.title}</h4>
+                  <p className="text-xs text-slate-500 flex items-center gap-1 mb-4">
+                    <Calendar className="w-3.5 h-3.5" />
+                    {new Date(saved.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 mt-2">
+                  <button onClick={() => handleOpenSaved(saved)} className="btn-primary py-1.5 px-4 text-xs flex-1 flex items-center justify-center gap-1.5">
+                    <FolderOpen className="w-3.5 h-3.5" /> Open
+                  </button>
+                  <button onClick={() => handleDeleteSaved(saved.id)} className="btn-secondary py-1.5 px-3 text-xs text-rose-500 hover:text-rose-600 hover:bg-rose-50 border-rose-200">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
   };
 
   if (selectedHotels.length < 2) {
@@ -107,6 +192,7 @@ export default function Compare() {
           <Link to="/" className="btn-primary inline-flex">
             <span>Explore Hotels</span>
           </Link>
+          {renderSavedComparisons()}
         </div>
       </div>
     );
@@ -301,6 +387,8 @@ export default function Compare() {
           </div>
         )}
       </div>
+
+      {renderSavedComparisons()}
 
       {/* Save Comparison Modal */}
       {saveModalOpen && (

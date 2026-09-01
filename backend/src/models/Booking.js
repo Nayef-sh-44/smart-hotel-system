@@ -44,6 +44,10 @@ const Booking = sequelize.define('Booking', {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false,
   },
+  currency: {
+    type: DataTypes.STRING(3),
+    defaultValue: 'EUR',
+  },
   tax_amount: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: true,

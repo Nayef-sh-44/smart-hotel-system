@@ -4,6 +4,7 @@ import { useComparison } from '../context/ComparisonContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useCurrency } from '../hooks/useCurrency.js';
 import { favoriteService } from '../services/api.js';
+import { getImageUrl } from '../utils/imageUtils.js';
 import toast from 'react-hot-toast';
 import {
   Star,
@@ -17,7 +18,34 @@ import {
   Coffee,
   Car,
   ArrowRight,
+  Dumbbell,
+  Bus,
+  ConciergeBell,
+  Snowflake,
+  Briefcase,
+  Eye,
+  Flower2,
+  Baby,
+  CheckCircle
 } from 'lucide-react';
+
+const getAmenityIcon = (name) => {
+  if (!name) return CheckCircle;
+  const n = name.toLowerCase();
+  if (n.includes('wi-fi') || n.includes('wifi')) return Wifi;
+  if (n.includes('pool') || n.includes('swim')) return Waves;
+  if (n.includes('fitness') || n.includes('gym')) return Dumbbell;
+  if (n.includes('breakfast') || n.includes('dining') || n.includes('restaurant')) return Coffee;
+  if (n.includes('parking') || n.includes('valet')) return Car;
+  if (n.includes('business') || n.includes('work')) return Briefcase;
+  if (n.includes('shuttle') || n.includes('airport')) return Bus;
+  if (n.includes('view') || n.includes('balcony')) return Eye;
+  if (n.includes('spa') || n.includes('massage') || n.includes('sauna')) return Flower2;
+  if (n.includes('kids') || n.includes('child')) return Baby;
+  if (n.includes('reception') || n.includes('24/7') || n.includes('desk')) return ConciergeBell;
+  if (n.includes('air conditioning') || n.includes('ac')) return Snowflake;
+  return CheckCircle;
+};
 
 export default function HotelCard({ hotel, isFavoriteInitial = false, onFavoriteToggle }) {
   const { toggleComparison, isSelected } = useComparison();
@@ -53,10 +81,9 @@ export default function HotelCard({ hotel, isFavoriteInitial = false, onFavorite
 
   return (
     <div className="glass-card group relative flex flex-col overflow-hidden">
-      {/* Image Container */}
       <div className="relative h-56 w-full overflow-hidden bg-slate-800">
         <img
-          src={hotel.primary_image_url || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80'}
+          src={hotel.images?.[0]?.image_url ? getImageUrl(hotel.images[0].image_url) : (hotel.primary_image_url ? getImageUrl(hotel.primary_image_url) : 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80')}
           alt={hotel.name}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
           onError={(e) => {
@@ -136,24 +163,42 @@ export default function HotelCard({ hotel, isFavoriteInitial = false, onFavorite
         </p>
 
         {/* Quick Amenities Preview */}
-        <div className="flex items-center gap-3 py-2.5 border-y border-slate-200 dark:border-slate-800/60 text-slate-500 dark:text-slate-400 mb-4">
-          <div className="flex items-center gap-1 text-xs" title="Free Wi-Fi">
-            <Wifi className="w-3.5 h-3.5 text-brand-500 dark:text-brand-400" />
-            <span>Wi-Fi</span>
+        {hotel.amenities && hotel.amenities.length > 0 ? (
+          <div className="flex items-center gap-3 py-2.5 border-y border-slate-200 dark:border-slate-800/60 text-slate-500 dark:text-slate-400 mb-4 overflow-x-auto no-scrollbar">
+            {hotel.amenities.slice(0, 4).map((amenity) => {
+              const IconComp = getAmenityIcon(amenity.name);
+              // Shorten name for display
+              let displayName = amenity.name;
+              if (displayName.includes('Wi-Fi') || displayName.includes('Wi-fi')) displayName = 'Wi-Fi';
+              else if (displayName.includes('Pool')) displayName = 'Pool';
+              else if (displayName.includes('Fitness') || displayName.includes('Gym')) displayName = 'Gym';
+              else if (displayName.includes('Breakfast')) displayName = 'Breakfast';
+              else if (displayName.includes('Parking')) displayName = 'Parking';
+              else if (displayName.includes('Business')) displayName = 'Business';
+              else if (displayName.includes('Shuttle')) displayName = 'Shuttle';
+              else if (displayName.includes('Spa')) displayName = 'Spa';
+              else if (displayName.includes('View')) displayName = 'View';
+              else if (displayName.includes('Kids')) displayName = 'Kids';
+              else if (displayName.length > 12) displayName = displayName.substring(0, 10) + '..';
+
+              return (
+                <div key={amenity.id} className="flex items-center gap-1 text-xs whitespace-nowrap shrink-0" title={amenity.name}>
+                  <IconComp className="w-3.5 h-3.5 text-brand-500 dark:text-brand-400" />
+                  <span>{displayName}</span>
+                </div>
+              );
+            })}
+            {hotel.amenities.length > 4 && (
+              <div className="flex items-center text-xs text-slate-400 whitespace-nowrap shrink-0" title={`${hotel.amenities.length - 4} more amenities`}>
+                +{hotel.amenities.length - 4}
+              </div>
+            )}
           </div>
-          <div className="flex items-center gap-1 text-xs" title="Pool">
-            <Waves className="w-3.5 h-3.5 text-brand-500 dark:text-brand-400" />
-            <span>Pool</span>
+        ) : (
+          <div className="flex items-center gap-3 py-2.5 border-y border-slate-200 dark:border-slate-800/60 text-slate-500 dark:text-slate-400 mb-4">
+            <div className="text-xs italic text-slate-400">No amenities listed</div>
           </div>
-          <div className="flex items-center gap-1 text-xs" title="Restaurant">
-            <Coffee className="w-3.5 h-3.5 text-brand-500 dark:text-brand-400" />
-            <span>Dining</span>
-          </div>
-          <div className="flex items-center gap-1 text-xs" title="Parking">
-            <Car className="w-3.5 h-3.5 text-brand-500 dark:text-brand-400" />
-            <span>Parking</span>
-          </div>
-        </div>
+        )}
 
         {/* Price & Action */}
         <div className="mt-auto flex items-center justify-between">

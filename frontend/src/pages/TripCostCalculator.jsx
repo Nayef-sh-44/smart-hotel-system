@@ -4,7 +4,7 @@ import { useCurrency } from '../hooks/useCurrency.js';
 import { Calculator, Hotel, Users, Calendar, Euro, MapPin, Coffee, Car, CreditCard, RotateCcw } from 'lucide-react';
 
 export default function TripCostCalculator() {
-  const { symbol, formatPrice, toEur } = useCurrency();
+  const { symbol, convertFromUSD, currency: userCurrency } = useCurrency();
   const [hotels, setHotels] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -62,23 +62,20 @@ export default function TripCostCalculator() {
   const totalGuests = Number(adults) + Number(children);
   
   const roomPricePerNight = selectedRoom ? Number(selectedRoom.price_per_night) : 0;
-  const hotelCost = roomPricePerNight * Number(numRooms) * nights;
+  const hotelCostInUserCurrency = convertFromUSD(roomPricePerNight, selectedHotel?.currency || 'EUR', userCurrency) * Number(numRooms) * nights;
   
-  // Trip days is usually nights + 1, but for food, some calculate it as nights or days. 
-  // User specifically requested: "Food Cost = daily food cost per person × total guests × trip days."
-  // And: "Trip days should be derived consistently from check-in/check-out."
   const tripDays = nights > 0 ? nights + 1 : 0;
   
   const cityAvgFood = selectedHotel?.city?.avg_daily_food_cost ? Number(selectedHotel.city.avg_daily_food_cost) : null;
   const cityAvgTransport = selectedHotel?.city?.avg_daily_transport_cost ? Number(selectedHotel.city.avg_daily_transport_cost) : null;
 
-  const foodCost = cityAvgFood !== null ? Number(toEur(cityAvgFood)) * totalGuests * tripDays : 0;
-  const transport = cityAvgTransport !== null ? Number(toEur(cityAvgTransport)) * totalGuests * tripDays : 0;
+  const foodCostInUserCurrency = cityAvgFood !== null ? convertFromUSD(cityAvgFood, 'EUR', userCurrency) * totalGuests * tripDays : 0;
+  const transportInUserCurrency = cityAvgTransport !== null ? convertFromUSD(cityAvgTransport, 'EUR', userCurrency) * totalGuests * tripDays : 0;
   
-  const activities = Number(toEur(activitiesCost));
-  const other = Number(toEur(otherCost));
+  const activitiesInUserCurrency = Number(activitiesCost) || 0;
+  const otherInUserCurrency = Number(otherCost) || 0;
   
-  const totalCost = hotelCost + foodCost + transport + activities + other;
+  const totalCost = hotelCostInUserCurrency + foodCostInUserCurrency + transportInUserCurrency + activitiesInUserCurrency + otherInUserCurrency;
 
   // Validation
   const getValidationError = () => {
@@ -233,7 +230,7 @@ export default function TripCostCalculator() {
                   <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1"><Car className="w-3 h-3"/> Daily Transport (per person)</label>
                   <div className="w-full bg-slate-100 dark:bg-dark-900/50 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-500 dark:text-slate-400 cursor-not-allowed">
                     {selectedHotelId && cityAvgTransport !== null 
-                      ? `${symbol}${formatPrice(toEur(cityAvgTransport))} (City Avg)` 
+                      ? `${symbol}${convertFromUSD(cityAvgTransport, 'EUR', userCurrency).toFixed(0)} (City Avg)` 
                       : selectedHotelId ? 'No data available' : 'Select a hotel first'}
                   </div>
                 </div>
@@ -242,7 +239,7 @@ export default function TripCostCalculator() {
                   <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1"><Coffee className="w-3 h-3"/> Daily Food (per person)</label>
                   <div className="w-full bg-slate-100 dark:bg-dark-900/50 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-500 dark:text-slate-400 cursor-not-allowed">
                     {selectedHotelId && cityAvgFood !== null 
-                      ? `${symbol}${formatPrice(toEur(cityAvgFood))} (City Avg)` 
+                      ? `${symbol}${convertFromUSD(cityAvgFood, 'EUR', userCurrency).toFixed(0)} (City Avg)` 
                       : selectedHotelId ? 'No data available' : 'Select a hotel first'}
                   </div>
                 </div>
@@ -285,27 +282,27 @@ export default function TripCostCalculator() {
               <div className="space-y-4 mb-6">
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-slate-600 dark:text-slate-400">Hotel ({nights} nights × {numRooms} room)</span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">{symbol}{formatPrice(hotelCost)}</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">{symbol}{hotelCostInUserCurrency.toFixed(0)}</span>
                 </div>
                 
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-slate-600 dark:text-slate-400">Food ({tripDays} days × {totalGuests} guests)</span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">{symbol}{formatPrice(foodCost)}</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">{symbol}{foodCostInUserCurrency.toFixed(0)}</span>
                 </div>
 
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-slate-600 dark:text-slate-400">Transportation</span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">{symbol}{formatPrice(transport)}</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">{symbol}{transportInUserCurrency.toFixed(0)}</span>
                 </div>
 
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-slate-600 dark:text-slate-400">Activities</span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">{symbol}{formatPrice(activities)}</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">{symbol}{activitiesInUserCurrency.toFixed(0)}</span>
                 </div>
 
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-slate-600 dark:text-slate-400">Other Expenses</span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">{symbol}{formatPrice(other)}</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">{symbol}{otherInUserCurrency.toFixed(0)}</span>
                 </div>
               </div>
 
@@ -313,7 +310,7 @@ export default function TripCostCalculator() {
                 <div className="flex justify-between items-center">
                   <span className="text-base font-bold text-slate-800 dark:text-slate-200">Total Trip Cost</span>
                   <span className="text-2xl font-black text-brand-600 dark:text-brand-400">
-                    {symbol}{isValid ? formatPrice(totalCost) : formatPrice(0)}
+                    {symbol}{isValid ? totalCost.toFixed(0) : 0}
                   </span>
                 </div>
               </div>

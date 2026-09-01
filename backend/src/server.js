@@ -20,7 +20,7 @@ const startServer = async () => {
     await modelSequelize.sync({ alter: false });
     console.log('Models synchronized.');
 
-    await autoSeedIfEmpty();
+    // await autoSeedIfEmpty();
 
     const server = app.listen(PORT, '0.0.0.0', () => {
       console.log(`SmartHotelBooking Backend server is running on port ${PORT}`);

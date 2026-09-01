@@ -24,6 +24,10 @@ const UserRewardInstance = sequelize.define('UserRewardInstance', {
     type: DataTypes.STRING,
     allowNull: true,
   },
+  hotel_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+  },
   created_at: {
     type: DataTypes.DATE,
     allowNull: false,

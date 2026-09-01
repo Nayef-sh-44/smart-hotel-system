@@ -23,6 +23,14 @@ const LoyaltyTransaction = sequelize.define('LoyaltyTransaction', {
     type: DataTypes.TEXT,
     allowNull: true,
   },
+  booking_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  hotel_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+  },
   created_at: {
     type: DataTypes.DATE,
     allowNull: false,

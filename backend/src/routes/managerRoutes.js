@@ -17,8 +17,15 @@ import {
   updateFlashDeal,
   deleteFlashDeal,
   getCompetitorBenchmarking,
+  uploadImage,
+  deleteImage,
+  uploadRoomImage,
+  deleteRoomImage,
+  updateRoomStatus,
+  updateRoomAvailability,
 } from '../controllers/managerController.js';
 import { authenticateToken, requireRole } from '../middlewares/authMiddleware.js';
+import { uploadHotelImage } from '../middlewares/uploadMiddleware.js';
 
 const router = express.Router();
 
@@ -27,6 +34,8 @@ router.use(authenticateToken, requireRole('manager', 'hotel_manager'));
 // Hotel
 router.get('/hotel', getMyHotel);
 router.put('/hotel', updateMyHotel);
+router.post('/hotel/images', uploadHotelImage.single('image'), uploadImage);
+router.delete('/hotel/images/:imageId', deleteImage);
 router.get('/competitor-benchmarking', getCompetitorBenchmarking);
 
 // Rooms
@@ -34,6 +43,10 @@ router.get('/rooms', getMyRooms);
 router.post('/rooms', createRoom);
 router.put('/rooms/:id', updateRoom);
 router.delete('/rooms/:id', deleteRoom);
+router.post('/rooms/:id/images', uploadHotelImage.single('image'), uploadRoomImage);
+router.delete('/rooms/:roomId/images/:imageId', deleteRoomImage);
+router.put('/rooms/:id/status', updateRoomStatus);
+router.put('/rooms/:id/availability', updateRoomAvailability);
 
 // Bookings
 router.get('/bookings', getMyBookings);

@@ -101,7 +101,7 @@ function AppContent() {
 
           {/* System Admin Portal (Admin ONLY) */}
           <Route path="/admin" element={
-            <RoleGuard allowedRoles={['system_admin']}>
+            <RoleGuard allowedRoles={['admin', 'system_admin']}>
               <AdminPortal />
             </RoleGuard>
           } />

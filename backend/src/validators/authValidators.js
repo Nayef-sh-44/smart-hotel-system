@@ -8,6 +8,18 @@ export const registerSchema = z.object({
   preferred_currency: z.string().length(3, 'Currency must be a 3-letter ISO code').default('EUR'),
   role: z.enum(['customer', 'user', 'manager', 'hotel_manager', 'admin', 'system_admin']).optional().default('user'),
   hotel_id: z.number().int().optional().nullable(),
+  security_question_1: z.string().min(1, 'Security question 1 is required').optional(),
+  security_answer_1: z.string().min(1, 'Security answer 1 is required').optional(),
+  security_question_2: z.string().min(1, 'Security question 2 is required').optional(),
+  security_answer_2: z.string().min(1, 'Security answer 2 is required').optional(),
+}).refine(data => {
+  if (data.security_question_1 && data.security_question_2) {
+    return data.security_question_1 !== data.security_question_2;
+  }
+  return true;
+}, {
+  message: "Security questions must be different",
+  path: ["security_question_2"]
 });
 
 export const loginSchema = z.object({

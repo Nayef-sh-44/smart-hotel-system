@@ -12,6 +12,7 @@ import {
   LoyaltyReward,
   sequelize,
 } from '../models/index.js';
+import { Op } from 'sequelize';
 
 const createBookingSchema = z.object({
   hotel_id: z.number().int(),
@@ -22,6 +23,7 @@ const createBookingSchema = z.object({
   special_requests: z.string().optional().nullable(),
   num_rooms: z.number().int().min(1).max(2).optional().default(1),
   voucher_code: z.string().optional().nullable(),
+  reward_id: z.number().int().optional().nullable(),
 });
 
 const updateBookingSchema = z.object({
@@ -30,6 +32,51 @@ const updateBookingSchema = z.object({
   num_guests: z.number().int().min(1),
   room_id: z.number().int(),
 });
+
+const calculateDynamicPrice = (checkInStr, checkOutStr, baseRoomPrice, pricingRules, numRooms = 1, country = '') => {
+  let calculatedBasePrice = 0;
+  const checkInDate = new Date(checkInStr);
+  const checkOutDate = new Date(checkOutStr);
+  let currentDate = new Date(Date.UTC(checkInDate.getUTCFullYear(), checkInDate.getUTCMonth(), checkInDate.getUTCDate()));
+  const endDate = new Date(Date.UTC(checkOutDate.getUTCFullYear(), checkOutDate.getUTCMonth(), checkOutDate.getUTCDate()));
+
+  const getSeason = (date, countryName) => {
+    const month = date.getUTCMonth() + 1;
+    const southernHemisphereCountries = ['Australia', 'Brazil', 'South Africa', 'Argentina', 'New Zealand', 'Chile', 'Peru', 'Uruguay', 'Fiji', 'Papua New Guinea'];
+    const isSouthern = southernHemisphereCountries.includes(countryName);
+
+    if (month >= 6 && month <= 8) return isSouthern ? 'Winter' : 'Summer';
+    if (month === 12 || month <= 2) return isSouthern ? 'Summer' : 'Winter';
+    if (month >= 3 && month <= 5) return isSouthern ? 'Autumn' : 'Spring';
+    return isSouthern ? 'Spring' : 'Autumn';
+  };
+
+  const getDayType = (date) => {
+    const day = date.getUTCDay();
+    // 0 = Sunday, 1 = Monday, ..., 4 = Thursday, 5 = Friday, 6 = Saturday
+    if (day === 4 || day === 5 || day === 6 || day === 0) return 'Peak';
+    return 'Normal';
+  };
+
+  while (currentDate < endDate) {
+    const season = getSeason(currentDate, country);
+    const dayType = getDayType(currentDate);
+    let dailyMultiplier = 1.0;
+
+    pricingRules.forEach((r) => {
+      if (r.rule_type === 'season' && r.rule_target === season) {
+        dailyMultiplier *= Number(r.multiplier);
+      } else if (r.rule_type === 'day_type' && r.rule_target === dayType) {
+        dailyMultiplier *= Number(r.multiplier);
+      }
+    });
+
+    calculatedBasePrice += (baseRoomPrice * dailyMultiplier * numRooms);
+    currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+  }
+
+  return Number(calculatedBasePrice.toFixed(2));
+};
 
 export const createBooking = async (req, res, next) => {
   const transaction = await sequelize.transaction();
@@ -49,7 +96,16 @@ export const createBooking = async (req, res, next) => {
 
     const total_nights = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
 
-    const room = await Room.findByPk(validated.room_id, { transaction });
+    const room = await Room.findByPk(validated.room_id, {
+      include: [
+        {
+          model: Hotel,
+          as: 'hotel',
+          include: [{ model: City, as: 'city' }]
+        }
+      ],
+      transaction
+    });
     if (!room || room.hotel_id !== validated.hotel_id) {
       await transaction.rollback();
       return res.status(404).json({
@@ -60,7 +116,7 @@ export const createBooking = async (req, res, next) => {
 
     const numRooms = validated.num_rooms || 1;
 
-    if (room.available_rooms < numRooms || !room.is_available) {
+    if (room.available_rooms < numRooms || !room.is_available || room.status === 'unavailable') {
       await transaction.rollback();
       return res.status(409).json({
         success: false,
@@ -76,7 +132,7 @@ export const createBooking = async (req, res, next) => {
       });
     }
 
-    // Dynamic pricing multiplier
+    // Dynamic pricing logic (Date-based)
     const pricingRules = await DynamicPricingRule.findAll({
       where: {
         hotel_id: validated.hotel_id,
@@ -85,18 +141,17 @@ export const createBooking = async (req, res, next) => {
       transaction,
     });
 
-    let priceMultiplier = 1.0;
-    pricingRules.forEach((r) => {
-      priceMultiplier *= Number(r.season_factor || 1.0);
-      priceMultiplier *= Number(r.occupancy_factor || 1.0);
-      priceMultiplier *= Number(r.event_factor || 1.0);
-      priceMultiplier *= Number(r.weekend_factor || 1.0);
-      priceMultiplier *= Number(r.manual_factor || 1.0);
-    });
+    const baseRoomPrice = Number(room.price_per_night);
+    let total_price = calculateDynamicPrice(
+      validated.check_in_date,
+      validated.check_out_date,
+      baseRoomPrice,
+      pricingRules,
+      numRooms,
+      room.hotel?.city?.country
+    );
 
-    const roomPrice = Number(room.price_per_night);
-    let total_price = Number((roomPrice * total_nights * priceMultiplier * numRooms).toFixed(2));
-      let promoDiscount = 0;
+    let promoDiscount = 0;
       let loyaltyDiscount = 0;
       let appliedVoucherText = '';
 
@@ -115,32 +170,45 @@ export const createBooking = async (req, res, next) => {
         }
       }
 
-      // 2. Loyalty Reward Discount (Auto-detect)
-      const pendingReward = await UserRewardInstance.findOne({
-        where: { user_id: req.user.id, is_redeemed: false },
-        include: [{ model: LoyaltyReward, as: 'reward' }],
-        order: [['created_at', 'ASC']],
-        transaction,
-      });
+      // 2. Loyalty Reward Discount
+      let pendingReward = null;
+      let userLoyalty = null;
+      if (validated.reward_id) {
+        pendingReward = await LoyaltyReward.findOne({
+          where: { 
+            id: validated.reward_id,
+            hotel_id: validated.hotel_id,
+            is_active: true
+          },
+          transaction,
+        });
 
-      if (pendingReward && pendingReward.reward) {
+        if (!pendingReward) {
+          throw { name: 'ZodError', errors: [{ path: ['reward_id'], message: 'Reward not found, inactive, or belongs to another hotel.' }] };
+        }
+
+        userLoyalty = await UserLoyalty.findOne({
+          where: { user_id: req.user.id, hotel_id: validated.hotel_id },
+          transaction,
+        });
+
+        if (!userLoyalty || userLoyalty.current_points < pendingReward.points_cost) {
+          throw { name: 'ZodError', errors: [{ path: ['reward_id'], message: 'Insufficient loyalty points in this hotel to redeem this reward.' }] };
+        }
+      }
+
+      if (pendingReward) {
         const priceAfterPromo = Math.max(0, total_price - promoDiscount);
 
-        if (pendingReward.reward.reward_type === 'percentage_discount') {
-          const percent = Number(pendingReward.reward.reward_value);
+        if (pendingReward.reward_type === 'percentage_discount') {
+          const percent = Number(pendingReward.reward_value);
           loyaltyDiscount = Number((priceAfterPromo * (percent / 100)).toFixed(2));
           appliedVoucherText += ` [Loyalty Reward: ${percent}% OFF - €${loyaltyDiscount} off]`;
         } else {
-          const fixed = Number(pendingReward.reward.reward_value);
-          loyaltyDiscount = fixed;
+          const fixed = Number(pendingReward.reward_value);
+          loyaltyDiscount = Math.min(priceAfterPromo, fixed);
           appliedVoucherText += ` [Loyalty Reward: €${fixed} OFF - €${loyaltyDiscount} off]`;
         }
-
-        await pendingReward.update({
-          is_redeemed: true,
-          redeemed_at: new Date(),
-          booking_reference: null,
-        }, { transaction });
       }
 
       const totalDiscount = promoDiscount + loyaltyDiscount;
@@ -173,6 +241,7 @@ export const createBooking = async (req, res, next) => {
       num_guests: validated.num_guests,
       total_price,
       tax_amount,
+      currency: 'USD',
       status: 'confirmed',
       payment_status: 'paid',
       special_requests: finalSpecialRequests.trim(),
@@ -180,15 +249,93 @@ export const createBooking = async (req, res, next) => {
 
 
 
-    if (pendingReward) {
-      await pendingReward.update({ booking_reference }, { transaction });
+    if (pendingReward && userLoyalty) {
+      // Deduct points
+      const newPoints = userLoyalty.current_points - pendingReward.points_cost;
+      await userLoyalty.update({
+        current_points: newPoints,
+        updated_at: new Date(),
+      }, { transaction });
+      
+      // Create LoyaltyTransaction
+      await LoyaltyTransaction.create({
+        user_id: req.user.id,
+        hotel_id: validated.hotel_id,
+        booking_id: newBooking.id,
+        transaction_type: 'redeemed',
+        points: -pendingReward.points_cost,
+        description: `Redeemed reward: ${pendingReward.reward_name} for booking ${booking_reference}`,
+      }, { transaction });
+      
+      // Create UserRewardInstance for history
+      await UserRewardInstance.create({
+        user_id: req.user.id,
+        reward_id: pendingReward.id,
+        hotel_id: validated.hotel_id,
+        booking_reference: booking_reference,
+        is_redeemed: true,
+        redeemed_at: new Date(),
+      }, { transaction });
+    }
+
+    // Award Loyalty Points Immediately
+    const config = await LoyaltyConfig.findOne({ transaction });
+    const pointsPerCurrency = config ? Number(config.points_per_currency) : 10;
+    const pointsEarned = Math.round(Number(total_price) * pointsPerCurrency);
+
+    if (pointsEarned > 0) {
+      const existingTx = await LoyaltyTransaction.findOne({
+        where: {
+          user_id: req.user.id,
+          hotel_id: validated.hotel_id,
+          booking_id: newBooking.id,
+          transaction_type: 'earned'
+        },
+        transaction
+      });
+
+      if (!existingTx) {
+        let loyalty = await UserLoyalty.findOne({
+          where: { user_id: req.user.id, hotel_id: validated.hotel_id },
+          transaction
+        });
+
+        if (!loyalty) {
+          loyalty = await UserLoyalty.create({
+            user_id: req.user.id,
+            hotel_id: validated.hotel_id,
+            current_points: pointsEarned,
+            lifetime_points: pointsEarned,
+            level_id: 1,
+          }, { transaction });
+        } else {
+          await loyalty.update({
+            current_points: loyalty.current_points + pointsEarned,
+            lifetime_points: loyalty.lifetime_points + pointsEarned,
+            updated_at: new Date(),
+          }, { transaction });
+        }
+
+        await LoyaltyTransaction.create({
+          user_id: req.user.id,
+          hotel_id: validated.hotel_id,
+          booking_id: newBooking.id,
+          transaction_type: 'earned',
+          points: pointsEarned,
+          description: `Points earned from booking ${booking_reference}`,
+        }, { transaction });
+      }
     }
 
     await transaction.commit();
 
+    // Attach loyalty_points_earned to the response data
+    const bookingData = newBooking.toJSON();
+    bookingData.loyalty_points_earned = pointsEarned || 0;
+
     res.status(201).json({
       success: true,
-      data: newBooking,
+      data: bookingData,
       message: 'Booking confirmed successfully.',
     });
   } catch (error) {
@@ -395,7 +542,16 @@ export const updateBooking = async (req, res, next) => {
       }
     }
 
-    let newRoom = await Room.findByPk(validated.room_id, { transaction });
+    let newRoom = await Room.findByPk(validated.room_id, {
+      include: [
+        {
+          model: Hotel,
+          as: 'hotel',
+          include: [{ model: City, as: 'city' }]
+        }
+      ],
+      transaction
+    });
     if (!newRoom || newRoom.hotel_id !== booking.hotel_id) {
       await transaction.rollback();
       return res.status(404).json({ success: false, error: { message: 'Room not found in this hotel', status: 404 } });
@@ -407,7 +563,7 @@ export const updateBooking = async (req, res, next) => {
     }
 
     if (isRoomChanged) {
-      if (!newRoom.is_available || newRoom.available_rooms < 1) {
+      if (!newRoom.is_available || newRoom.available_rooms < 1 || newRoom.status === 'unavailable') {
         await transaction.rollback();
         return res.status(409).json({ success: false, error: { message: 'The selected room type is currently unavailable', status: 409 } });
       }
@@ -436,16 +592,15 @@ export const updateBooking = async (req, res, next) => {
         transaction,
       });
 
-      let priceMultiplier = 1.0;
-      pricingRules.forEach((r) => {
-        priceMultiplier *= Number(r.season_factor || 1.0);
-        priceMultiplier *= Number(r.occupancy_factor || 1.0);
-        priceMultiplier *= Number(r.event_factor || 1.0);
-        priceMultiplier *= Number(r.weekend_factor || 1.0);
-        priceMultiplier *= Number(r.manual_factor || 1.0);
-      });
-
-      let newBasePrice = Number((Number(newRoom.price_per_night) * total_nights * priceMultiplier).toFixed(2));
+      let newBasePrice = calculateDynamicPrice(
+        validated.check_in_date,
+        validated.check_out_date,
+        Number(newRoom.price_per_night),
+        pricingRules,
+        booking.num_rooms || 1,
+        newRoom.hotel?.city?.country
+      );
+      
       newTaxAmount = Number((newBasePrice * 0.03).toFixed(2));
       newTotalPrice = Number((newBasePrice + newTaxAmount).toFixed(2));
     }
@@ -458,6 +613,7 @@ export const updateBooking = async (req, res, next) => {
       total_nights: Math.ceil((newCheckOut - newCheckIn) / (1000 * 60 * 60 * 24)),
       total_price: newTotalPrice,
       tax_amount: newTaxAmount,
+      currency: 'USD',
       updated_at: new Date(),
     }, { transaction });
 

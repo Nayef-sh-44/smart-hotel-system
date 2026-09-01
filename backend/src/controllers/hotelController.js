@@ -5,6 +5,7 @@ import {
   Room,
   Amenity,
   HotelImage,
+  RoomImage,
   Review,
   NearbyService,
   TouristAttraction,
@@ -38,12 +39,16 @@ export const getAllHotels = async (req, res, next) => {
     }
 
     if (min_price || max_price) {
+      const userCurrency = req.query.user_currency || 'USD';
+      const minPriceUsd = min_price ? (userCurrency === 'EUR' ? Number(min_price) * 1.10 : Number(min_price)) : null;
+      const maxPriceUsd = max_price ? (userCurrency === 'EUR' ? Number(max_price) * 1.10 : Number(max_price)) : null;
+
       whereClause.base_price_per_night = {};
-      if (min_price) {
-        whereClause.base_price_per_night[Op.gte] = Number(min_price);
+      if (minPriceUsd !== null) {
+        whereClause.base_price_per_night[Op.gte] = minPriceUsd;
       }
-      if (max_price) {
-        whereClause.base_price_per_night[Op.lte] = Number(max_price);
+      if (maxPriceUsd !== null) {
+        whereClause.base_price_per_night[Op.lte] = maxPriceUsd;
       }
     }
 
@@ -131,6 +136,7 @@ export const getHotelById = async (req, res, next) => {
         {
           model: Room,
           as: 'rooms',
+          include: [{ model: RoomImage, as: 'images' }],
         },
         {
           model: Amenity,

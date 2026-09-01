@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { hotelService, cityService, recommendationService, amenityService } from '../services/api.js';
+import { hotelService, cityService, recommendationService, amenityService, favoriteService } from '../services/api.js';
 import { useCurrency } from '../hooks/useCurrency.js';
+import { useAuth } from '../context/AuthContext.jsx';
 import HotelCard from '../components/HotelCard.jsx';
 import { Search, MapPin, Sparkles, Hotel as HotelIcon, Award } from 'lucide-react';
 
 export default function Hotels() {
-  const { symbol, toEur } = useCurrency();
+  const { symbol, currency } = useCurrency();
   const [hotels, setHotels] = useState([]);
   const [recommendedHotels, setRecommendedHotels] = useState([]);
   const [cities, setCities] = useState([]);
   const [amenities, setAmenities] = useState([]);
+  const [userFavorites, setUserFavorites] = useState([]);
+  const { isAuthenticated } = useAuth();
   
   const [loading, setLoading] = useState(true);
   const [loadingRecs, setLoadingRecs] = useState(false);
@@ -39,23 +42,29 @@ export default function Hotels() {
   useEffect(() => {
     const initData = async () => {
       try {
-        const [cRes, aRes] = await Promise.all([
+        const promises = [
           cityService.getAll(),
           amenityService.getAll()
-        ]);
-        if (cRes.success) setCities(cRes.data);
-        if (aRes.success) setAmenities(aRes.data);
+        ];
+        if (isAuthenticated) {
+          promises.push(favoriteService.getAll());
+        }
+        const results = await Promise.all(promises);
+        if (results[0].success) setCities(results[0].data);
+        if (results[1].success) setAmenities(results[1].data);
+        if (isAuthenticated && results[2] && results[2].success) {
+          setUserFavorites(results[2].data.map(f => f.hotel_id));
+        }
       } catch (err) {
         console.error('Error loading filter data:', err);
       }
     };
     initData();
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     fetchHotels();
-    fetchRecommendations();
-  }, [selectedCity, starFilter, targetPrice, selectedAmenities]);
+  }, [selectedCity, starFilter, targetPrice, selectedAmenities, tripType]);
 
   const fetchHotels = async () => {
     setLoading(true);
@@ -64,7 +73,10 @@ export default function Hotels() {
       if (searchQuery) params.q = searchQuery;
       if (selectedCity) params.city_id = selectedCity;
       if (starFilter) params.star_rating = starFilter;
-      if (targetPrice) params.max_price = toEur(targetPrice);
+      if (targetPrice) {
+        params.max_price = targetPrice;
+        params.user_currency = currency;
+      }
       if (selectedAmenities.length > 0) params.amenities = selectedAmenities.join(',');
       if (tripType) params.trip_type = tripType;
       if (guests) params.guests = guests;
@@ -73,11 +85,16 @@ export default function Hotels() {
       if (checkOutDate) params.check_out = checkOutDate;
 
       const res = await hotelService.getAll(params);
+      let fetchedHotels = [];
       if (Array.isArray(res)) {
-        setHotels(res);
+        fetchedHotels = res;
       } else if (res?.success) {
-        setHotels(res.data);
+        fetchedHotels = res.data;
       }
+      setHotels(fetchedHotels);
+      
+      const hotelIds = fetchedHotels.map(h => h.id);
+      fetchRecommendations(hotelIds);
     } catch (err) {
       console.error('Error fetching hotels:', err);
     } finally {
@@ -85,15 +102,22 @@ export default function Hotels() {
     }
   };
 
-  const fetchRecommendations = async () => {
+  const fetchRecommendations = async (hotelIds) => {
+    if (!hotelIds || hotelIds.length === 0) {
+      setRecommendedHotels([]);
+      return;
+    }
+    
     setLoadingRecs(true);
     try {
       const params = {
         limit: 3,
+        hotel_ids: hotelIds.join(',')
       };
-      if (selectedCity) params.city_id = selectedCity;
-      if (starFilter) params.min_stars = starFilter;
-      if (targetPrice) params.target_price = toEur(targetPrice);
+      if (targetPrice) {
+        params.target_price = targetPrice;
+        params.user_currency = currency;
+      }
       if (selectedAmenities.length > 0) params.amenities = selectedAmenities.join(',');
       if (tripType) params.trip_type = tripType;
 
@@ -111,7 +135,6 @@ export default function Hotels() {
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     fetchHotels();
-    fetchRecommendations();
   };
 
   const handleAmenityToggle = (id) => {
@@ -314,28 +337,79 @@ export default function Hotels() {
       </section>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-10 space-y-12">
+        {/* City Information Section */}
+        {selectedCity && cities.length > 0 && (
+          <section>
+            {(() => {
+              const currentCity = cities.find((c) => c.id === parseInt(selectedCity));
+              if (!currentCity || (!currentCity.best_visit_months && !currentCity.weather_description)) return null;
+              
+              return (
+                <div className="bg-white dark:bg-dark-900 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-800">
+                  <div className="flex items-center gap-2 mb-4">
+                    <MapPin className="w-5 h-5 text-brand-500" />
+                    <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                      About {currentCity.name}
+                    </h2>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {currentCity.best_visit_months && (
+                      <div className="flex flex-col">
+                        <span className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                          Best Time to Visit
+                        </span>
+                        <span className="text-slate-700 dark:text-slate-200 font-medium">
+                          {currentCity.best_visit_months}
+                        </span>
+                      </div>
+                    )}
+                    
+                    {currentCity.weather_description && (
+                      <div className="flex flex-col">
+                        <span className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                          Weather Information
+                        </span>
+                        <span className="text-slate-700 dark:text-slate-200 font-medium">
+                          {currentCity.weather_description}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+          </section>
+        )}
         {/* Recommended Hotels Section */}
-        {recommendedHotels.length > 0 && !loadingRecs && (
+        {!loadingRecs && (
           <section>
             <div className="flex items-center gap-2 mb-6">
               <Sparkles className="w-5 h-5 text-brand-500 dark:text-brand-400" />
               <h2 className="text-xl font-bold text-slate-900 dark:text-white">Recommended for You</h2>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
-              {recommendedHotels.map((item) => (
-                <div key={`rec-${item.hotel.id}`} className="relative group">
-                  <div className="absolute -top-3 left-4 z-10 px-3 py-1 rounded-full bg-gradient-to-r from-brand-600 to-accent-500 text-white text-[10px] font-bold shadow-lg flex items-center gap-1">
-                    <Sparkles className="w-3 h-3" />
-                    <span>{Math.min(99, item.recommendationScore)}% Match</span>
+            
+            {recommendedHotels.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
+                {recommendedHotels.map((item) => (
+                  <div key={`rec-${item.hotel.id}`} className="relative group">
+                    <div className="absolute -top-3 left-4 z-10 px-3 py-1 rounded-full bg-gradient-to-r from-brand-600 to-accent-500 text-white text-[10px] font-bold shadow-lg flex items-center gap-1">
+                      <Sparkles className="w-3 h-3" />
+                      <span>{Math.min(99, item.recommendationScore)}% Match</span>
+                    </div>
+                    <HotelCard hotel={item.hotel} isFavoriteInitial={userFavorites.includes(item.hotel.id)} />
+                    <div className="mt-2 text-[11px] text-slate-600 dark:text-slate-400 flex items-center gap-1.5 px-2">
+                      <Award className="w-3 h-3 text-amber-500 dark:text-amber-400 shrink-0" />
+                      <span className="truncate">{item.matchReasons[0]}</span>
+                    </div>
                   </div>
-                  <HotelCard hotel={item.hotel} />
-                  <div className="mt-2 text-[11px] text-slate-600 dark:text-slate-400 flex items-center gap-1.5 px-2">
-                    <Award className="w-3 h-3 text-amber-500 dark:text-amber-400 shrink-0" />
-                    <span className="truncate">{item.matchReasons[0]}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-sm text-slate-500 dark:text-slate-400 bg-white dark:bg-dark-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 text-center">
+                No hotels match your selected criteria.
+              </div>
+            )}
           </section>
         )}
 
@@ -388,7 +462,7 @@ export default function Hotels() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {hotels.map((hotel) => (
-                <HotelCard key={`all-${hotel.id}`} hotel={hotel} />
+                <HotelCard key={`all-${hotel.id}`} hotel={hotel} isFavoriteInitial={userFavorites.includes(hotel.id)} />
               ))}
             </div>
             )}

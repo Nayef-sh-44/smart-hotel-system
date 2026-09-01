@@ -42,6 +42,38 @@ const User = sequelize.define('User', {
     type: DataTypes.INTEGER,
     allowNull: true,
   },
+  security_question_1: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  security_answer_1_hash: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  security_question_2: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  security_answer_2_hash: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  password_reset_token: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  password_reset_expires: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  failed_recovery_attempts: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+  },
+  recovery_locked_until: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
   created_at: {
     type: DataTypes.DATE,
     allowNull: false,

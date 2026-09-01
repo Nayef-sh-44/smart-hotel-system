@@ -1,6 +1,8 @@
+
 import {
   Hotel,
   Room,
+  HotelImage, RoomImage,
   Booking,
   DynamicPricingRule,
   FlashDeal,
@@ -24,6 +26,7 @@ export const getMyHotel = async (req, res, next) => {
         { model: Room, as: 'rooms' },
         { model: DynamicPricingRule, as: 'pricingRules' },
         { model: FlashDeal, as: 'flashDeals' },
+        { model: HotelImage, RoomImage, as: 'images' },
         {
           model: Review,
           as: 'reviews',
@@ -58,11 +61,27 @@ export const updateMyHotel = async (req, res, next) => {
       });
     }
 
-    const { name, description, address, check_in_time, check_out_time, base_price_per_night } = req.body;
+    const { name, description, address, check_in_time, check_out_time, base_price_per_night, latitude, longitude } = req.body;
+    
+    // Validate latitude and longitude if provided
+    let updatedLat = hotel.latitude;
+    let updatedLng = hotel.longitude;
+    
+    if (latitude !== undefined && longitude !== undefined) {
+      const latNum = parseFloat(latitude);
+      const lngNum = parseFloat(longitude);
+      if (!isNaN(latNum) && latNum >= -90 && latNum <= 90 && !isNaN(lngNum) && lngNum >= -180 && lngNum <= 180) {
+        updatedLat = latNum;
+        updatedLng = lngNum;
+      }
+    }
+
     await hotel.update({
       name: name || hotel.name,
       description: description !== undefined ? description : hotel.description,
       address: address || hotel.address,
+      latitude: updatedLat,
+      longitude: updatedLng,
       check_in_time: check_in_time || hotel.check_in_time,
       check_out_time: check_out_time || hotel.check_out_time,
       base_price_per_night: base_price_per_night || hotel.base_price_per_night,
@@ -84,6 +103,7 @@ export const getMyRooms = async (req, res, next) => {
   try {
     const rooms = await Room.findAll({
       where: { hotel_id: req.user.hotel_id },
+      include: [{ model: RoomImage, as: 'images' }],
       order: [['price_per_night', 'ASC']],
     });
     res.status(200).json({ success: true, data: rooms });
@@ -209,14 +229,18 @@ export const getPricingRules = async (req, res, next) => {
 
 export const createPricingRule = async (req, res, next) => {
   try {
-    const { season_factor, occupancy_factor, event_factor, weekend_factor, manual_factor, reason } = req.body;
+    const { rule_type, rule_target, multiplier, reason } = req.body;
     const rule = await DynamicPricingRule.create({
       hotel_id: req.user.hotel_id,
-      season_factor: Number(season_factor || 1.0),
-      occupancy_factor: Number(occupancy_factor || 1.0),
-      event_factor: Number(event_factor || 1.0),
-      weekend_factor: Number(weekend_factor || 1.0),
-      manual_factor: Number(manual_factor || 1.0),
+      rule_type: rule_type || null,
+      rule_target: rule_target || null,
+      multiplier: multiplier !== undefined ? Number(multiplier) : 1.0,
+      // fallback for old fields to keep DB happy
+      season_factor: 1.0,
+      occupancy_factor: 1.0,
+      event_factor: 1.0,
+      weekend_factor: 1.0,
+      manual_factor: 1.0,
       reason: reason || '',
       is_active: true,
     });
@@ -235,13 +259,11 @@ export const updatePricingRule = async (req, res, next) => {
     if (!rule) {
       return res.status(404).json({ success: false, error: { message: 'Rule not found', status: 404 } });
     }
-    const { season_factor, occupancy_factor, event_factor, weekend_factor, manual_factor, reason, is_active } = req.body;
+    const { rule_type, rule_target, multiplier, reason, is_active } = req.body;
     await rule.update({
-      season_factor: season_factor !== undefined ? Number(season_factor) : rule.season_factor,
-      occupancy_factor: occupancy_factor !== undefined ? Number(occupancy_factor) : rule.occupancy_factor,
-      event_factor: event_factor !== undefined ? Number(event_factor) : rule.event_factor,
-      weekend_factor: weekend_factor !== undefined ? Number(weekend_factor) : rule.weekend_factor,
-      manual_factor: manual_factor !== undefined ? Number(manual_factor) : rule.manual_factor,
+      rule_type: rule_type !== undefined ? rule_type : rule.rule_type,
+      rule_target: rule_target !== undefined ? rule_target : rule.rule_target,
+      multiplier: multiplier !== undefined ? Number(multiplier) : rule.multiplier,
       reason: reason !== undefined ? reason : rule.reason,
       is_active: is_active !== undefined ? Boolean(is_active) : rule.is_active,
       updated_at: new Date(),
@@ -475,6 +497,229 @@ export const getCompetitorBenchmarking = async (req, res, next) => {
         },
       },
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+export const updateHotelCurrency = async (req, res, next) => {
+  try {
+    if (!req.user.hotel_id) {
+      return res.status(404).json({ success: false, error: { message: 'No assigned hotel found.', status: 404 } });
+    }
+
+    const { currency } = req.body;
+    if (!currency || !['EUR', 'USD'].includes(currency)) {
+      return res.status(400).json({ success: false, error: { message: 'Invalid currency. Only EUR and USD are supported.', status: 400 } });
+    }
+
+    const hotel = await Hotel.findByPk(req.user.hotel_id);
+    if (!hotel) {
+      return res.status(404).json({ success: false, error: { message: 'Hotel not found.', status: 404 } });
+    }
+
+    const oldCurrency = hotel.currency || 'EUR';
+
+    if (oldCurrency !== currency) {
+      const { sequelize } = await import('../models/index.js');
+      const transaction = await sequelize.transaction();
+      
+      try {
+        if (hotel.base_price_per_night) {
+          const convertedBase = convertPrice(Number(hotel.base_price_per_night), oldCurrency, currency);
+          hotel.base_price_per_night = convertedBase.toFixed(2);
+        }
+        hotel.currency = currency;
+        hotel.updated_at = new Date();
+        await hotel.save({ transaction });
+
+        const rooms = await Room.findAll({ where: { hotel_id: hotel.id }, transaction });
+        for (const room of rooms) {
+          if (room.price_per_night) {
+            const convertedPrice = convertPrice(Number(room.price_per_night), oldCurrency, currency);
+            room.price_per_night = convertedPrice.toFixed(2);
+            await room.save({ transaction });
+          }
+        }
+        
+        await transaction.commit();
+      } catch (err) {
+        await transaction.rollback();
+        throw err;
+      }
+    }
+
+    res.status(200).json({ success: true, data: hotel, message: 'Hotel currency updated.' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const uploadImage = async (req, res, next) => {
+  try {
+    if (!req.user.hotel_id) {
+      return res.status(404).json({ success: false, error: { message: 'No assigned hotel found.', status: 404 } });
+    }
+    
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: { message: 'No file provided or invalid format.', status: 400 } });
+    }
+
+    const hotelIdStr = req.user.hotel_id.toString().padStart(3, '0');
+    const dbPath = `/uploads/hotels/hotel-${hotelIdStr}/${req.file.filename}`;
+
+    const newImage = await HotelImage.create({
+      hotel_id: req.user.hotel_id,
+      image_url: dbPath,
+      is_primary: false,
+      display_order: 0
+    });
+
+    res.status(201).json({ success: true, data: newImage, message: 'Image uploaded successfully.' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteImage = async (req, res, next) => {
+  try {
+    if (!req.user.hotel_id) {
+      return res.status(404).json({ success: false, error: { message: 'No assigned hotel found.', status: 404 } });
+    }
+
+    const { imageId } = req.params;
+    const image = await HotelImage.findOne({ where: { id: imageId, hotel_id: req.user.hotel_id } });
+
+    if (!image) {
+      return res.status(404).json({ success: false, error: { message: 'Image not found or not owned by your hotel.', status: 404 } });
+    }
+
+    if (image.image_url) {
+      const fs = await import('fs');
+      const path = await import('path');
+      const physicalPath = path.join(process.cwd(), image.image_url);
+      if (fs.existsSync(physicalPath)) {
+        fs.unlinkSync(physicalPath);
+      }
+    }
+
+    await image.destroy();
+    res.status(200).json({ success: true, message: 'Image deleted successfully.' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+export const uploadRoomImage = async (req, res, next) => {
+  try {
+    if (!req.user.hotel_id) {
+      return res.status(404).json({ success: false, error: { message: 'No assigned hotel found.', status: 404 } });
+    }
+    const { id: roomId } = req.params;
+    const room = await Room.findOne({ where: { id: roomId, hotel_id: req.user.hotel_id } });
+    if (!room) {
+      return res.status(404).json({ success: false, error: { message: 'Room not found or not owned by your hotel.', status: 404 } });
+    }
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: { message: 'No image provided.', status: 400 } });
+    }
+
+    const hotelIdStr = req.user.hotel_id.toString().padStart(3, '0');
+    const imageUrl = `/uploads/hotels/hotel-${hotelIdStr}/${req.file.filename}`;
+
+    const newImage = await RoomImage.create({
+      room_id: roomId,
+      image_url: imageUrl,
+      is_primary: false,
+    });
+
+    res.status(201).json({ success: true, data: newImage, message: 'Room image uploaded successfully.' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteRoomImage = async (req, res, next) => {
+  try {
+    if (!req.user.hotel_id) {
+      return res.status(404).json({ success: false, error: { message: 'No assigned hotel found.', status: 404 } });
+    }
+    const { roomId, imageId } = req.params;
+    const room = await Room.findOne({ where: { id: roomId, hotel_id: req.user.hotel_id } });
+    if (!room) {
+      return res.status(404).json({ success: false, error: { message: 'Room not found or not owned by your hotel.', status: 404 } });
+    }
+
+    const image = await RoomImage.findOne({ where: { id: imageId, room_id: roomId } });
+    if (!image) {
+      return res.status(404).json({ success: false, error: { message: 'Image not found.', status: 404 } });
+    }
+
+    if (image.image_url) {
+      const fs = await import('fs');
+      const path = await import('path');
+      const physicalPath = path.join(process.cwd(), image.image_url);
+      if (fs.existsSync(physicalPath)) {
+        fs.unlinkSync(physicalPath);
+      }
+    }
+
+    await image.destroy();
+    res.status(200).json({ success: true, message: 'Room image deleted successfully.' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateRoomStatus = async (req, res, next) => {
+  try {
+    if (!req.user.hotel_id) {
+      return res.status(404).json({ success: false, error: { message: 'No assigned hotel found.', status: 404 } });
+    }
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!['available', 'unavailable'].includes(status)) {
+      return res.status(400).json({ success: false, error: { message: 'Invalid status.', status: 400 } });
+    }
+
+    const room = await Room.findOne({ where: { id, hotel_id: req.user.hotel_id } });
+    if (!room) {
+      return res.status(404).json({ success: false, error: { message: 'Room not found.', status: 404 } });
+    }
+
+    room.status = status;
+    await room.save();
+
+    res.status(200).json({ success: true, data: room, message: 'Room status updated.' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateRoomAvailability = async (req, res, next) => {
+  try {
+    if (!req.user.hotel_id) {
+      return res.status(404).json({ success: false, error: { message: 'No assigned hotel found.', status: 404 } });
+    }
+    const { id } = req.params;
+    const { available_rooms } = req.body;
+
+    if (typeof available_rooms !== 'number' || available_rooms < 0) {
+      return res.status(400).json({ success: false, error: { message: 'Invalid count.', status: 400 } });
+    }
+
+    const room = await Room.findOne({ where: { id, hotel_id: req.user.hotel_id } });
+    if (!room) {
+      return res.status(404).json({ success: false, error: { message: 'Room not found.', status: 404 } });
+    }
+
+    room.available_rooms = available_rooms;
+    await room.save();
+
+    res.status(200).json({ success: true, data: room, message: 'Available rooms updated.' });
   } catch (error) {
     next(error);
   }

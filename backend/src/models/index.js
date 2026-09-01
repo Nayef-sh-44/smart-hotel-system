@@ -99,18 +99,32 @@ Hotel.hasMany(TouristAttraction, { foreignKey: 'hotel_id', as: 'attractions', on
 TouristAttraction.belongsTo(Hotel, { foreignKey: 'hotel_id', as: 'hotel', onDelete: 'CASCADE' });
 
 // Loyalty
-User.hasOne(UserLoyalty, { foreignKey: 'user_id', as: 'loyalty', onDelete: 'CASCADE' });
+User.hasMany(UserLoyalty, { foreignKey: 'user_id', as: 'loyaltyBalances', onDelete: 'CASCADE' });
 UserLoyalty.belongsTo(User, { foreignKey: 'user_id', as: 'user', onDelete: 'CASCADE' });
+Hotel.hasMany(UserLoyalty, { foreignKey: 'hotel_id', as: 'loyaltyBalances', onDelete: 'CASCADE' });
+UserLoyalty.belongsTo(Hotel, { foreignKey: 'hotel_id', as: 'hotel', onDelete: 'CASCADE' });
 LoyaltyLevel.hasMany(UserLoyalty, { foreignKey: 'level_id', as: 'users', onDelete: 'NO ACTION' });
 UserLoyalty.belongsTo(LoyaltyLevel, { foreignKey: 'level_id', as: 'level', onDelete: 'NO ACTION' });
 
 User.hasMany(LoyaltyTransaction, { foreignKey: 'user_id', as: 'loyaltyTransactions', onDelete: 'CASCADE' });
 LoyaltyTransaction.belongsTo(User, { foreignKey: 'user_id', as: 'user', onDelete: 'CASCADE' });
 
+Booking.hasMany(LoyaltyTransaction, { foreignKey: 'booking_id', as: 'loyaltyTransactions', onDelete: 'NO ACTION' });
+LoyaltyTransaction.belongsTo(Booking, { foreignKey: 'booking_id', as: 'booking', onDelete: 'NO ACTION' });
+
 User.hasMany(UserRewardInstance, { foreignKey: 'user_id', as: 'rewardInstances', onDelete: 'CASCADE' });
 UserRewardInstance.belongsTo(User, { foreignKey: 'user_id', as: 'user', onDelete: 'CASCADE' });
 LoyaltyReward.hasMany(UserRewardInstance, { foreignKey: 'reward_id', as: 'instances', onDelete: 'NO ACTION' });
 UserRewardInstance.belongsTo(LoyaltyReward, { foreignKey: 'reward_id', as: 'reward', onDelete: 'NO ACTION' });
+
+Hotel.hasMany(LoyaltyReward, { foreignKey: 'hotel_id', as: 'loyaltyRewards', onDelete: 'CASCADE' });
+LoyaltyReward.belongsTo(Hotel, { foreignKey: 'hotel_id', as: 'hotel', onDelete: 'CASCADE' });
+
+Hotel.hasMany(UserRewardInstance, { foreignKey: 'hotel_id', as: 'rewardInstances', onDelete: 'CASCADE' });
+UserRewardInstance.belongsTo(Hotel, { foreignKey: 'hotel_id', as: 'hotel', onDelete: 'CASCADE' });
+
+Hotel.hasMany(LoyaltyTransaction, { foreignKey: 'hotel_id', as: 'loyaltyTransactions', onDelete: 'NO ACTION' });
+LoyaltyTransaction.belongsTo(Hotel, { foreignKey: 'hotel_id', as: 'hotel', onDelete: 'NO ACTION' });
 
 // Hotel manager association
 User.belongsTo(Hotel, { foreignKey: 'hotel_id', as: 'managedHotel', onDelete: 'NO ACTION' });

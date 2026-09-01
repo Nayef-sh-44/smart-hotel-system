@@ -2,7 +2,9 @@ import express from 'express';
 import {
   getAnalytics,
   getAllUsers,
+  createUser,
   updateUserRole,
+  deleteUser,
   getAllHotels,
   createHotel,
   updateHotel,
@@ -24,7 +26,9 @@ router.get('/analytics', getAnalytics);
 
 // Users (retained for test compatibility)
 router.get('/users', getAllUsers);
+router.post('/users', createUser);
 router.put('/users/:id/role', updateUserRole);
+router.delete('/users/:id', deleteUser);
 
 // Hotels & Login Account Management (1 Hotel = 1 Login Account)
 router.get('/hotels', getAllHotels);

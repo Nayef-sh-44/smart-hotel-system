@@ -2,9 +2,18 @@ import { DataTypes } from 'sequelize';
 import sequelize from '../config/database.js';
 
 const UserLoyalty = sequelize.define('UserLoyalty', {
-  user_id: {
+  id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
+    autoIncrement: true,
+  },
+  user_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+  },
+  hotel_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
   },
   level_id: {
     type: DataTypes.INTEGER,

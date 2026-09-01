@@ -23,6 +23,10 @@ const LoyaltyReward = sequelize.define('LoyaltyReward', {
     type: DataTypes.INTEGER,
     allowNull: false,
   },
+  hotel_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+  },
   is_active: {
     type: DataTypes.BOOLEAN,
     allowNull: false,

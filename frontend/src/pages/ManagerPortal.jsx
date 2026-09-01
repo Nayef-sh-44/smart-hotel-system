@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { managerService } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import toast from 'react-hot-toast';
+import { getImageUrl } from '../utils/imageUtils.js';
+import ManagerRoomCard from '../components/ManagerRoomCard.jsx';
 import {
-  Briefcase,
+  Briefcase, Settings, Image, DollarSign,
   Hotel,
   BedDouble,
   CalendarCheck,
@@ -15,12 +17,42 @@ import {
   XCircle,
   LogOut,
   Edit,
+  MapPin,
 } from 'lucide-react';
+import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+const LocationMarker = ({ position, setPosition }) => {
+  useMapEvents({
+    click(e) {
+      setPosition([e.latlng.lat, e.latlng.lng]);
+    },
+  });
+
+  if (!position) return null;
+
+  return (
+    <Marker 
+      position={position}
+      icon={L.divIcon({
+        className: 'custom-hotel-marker',
+        html: `<div style="background-color: #10b981; color: white; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 12px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); white-space: nowrap; transform: translate(-50%, -100%);">📍 Drop Pin</div>`,
+        iconSize: [80, 30],
+        iconAnchor: [40, 30]
+      })}
+    />
+  );
+};
 
 export default function ManagerPortal() {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('hotel');
   const [loading, setLoading] = useState(true);
+
+    const [imageFile, setImageFile] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+
 
   // Data state
   const [myHotel, setMyHotel] = useState(null);
@@ -33,11 +65,9 @@ export default function ManagerPortal() {
   const [isEditingRule, setIsEditingRule] = useState(false);
   const [ruleForm, setRuleForm] = useState({
     id: null,
-    season_factor: 1.0,
-    occupancy_factor: 1.0,
-    event_factor: 1.0,
-    weekend_factor: 1.0,
-    manual_factor: 1.0,
+    rule_type: 'season',
+    rule_target: 'Summer',
+    multiplier: 1.0,
     reason: '',
   });
 
@@ -59,12 +89,19 @@ export default function ManagerPortal() {
     end_date: '2026-09-30',
   });
 
+  const [mapPosition, setMapPosition] = useState(null);
+
   const fetchData = async () => {
     setLoading(true);
     try {
       if (activeTab === 'hotel') {
         const res = await managerService.getMyHotel();
-        if (res.success) setMyHotel(res.data);
+        if (res.success) {
+          setMyHotel(res.data);
+          if (res.data.latitude && res.data.longitude) {
+            setMapPosition([res.data.latitude, res.data.longitude]);
+          }
+        }
       } else if (activeTab === 'rooms') {
         const res = await managerService.getRooms();
         if (res.success) setRooms(res.data);
@@ -89,6 +126,42 @@ export default function ManagerPortal() {
     fetchData();
   }, [activeTab]);
 
+  
+  
+  
+  
+  const handleUploadImage = async () => {
+    if (!imageFile) return;
+    const formData = new FormData();
+    formData.append('image', imageFile);
+    setUploadingImage(true);
+    try {
+      const res = await managerService.uploadImage(formData);
+      if (res.success) {
+        toast.success('Image uploaded');
+        setImageFile(null);
+        fetchData();
+      }
+    } catch (e) {
+      toast.error('Image upload failed');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleDeleteImage = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this image?')) return;
+    try {
+      const res = await managerService.deleteImage(id);
+      if (res.success) {
+        toast.success('Image deleted');
+        fetchData();
+      }
+    } catch (e) {
+      toast.error('Delete failed');
+    }
+  };
+
   const handleUpdateHotel = async (e) => {
     e.preventDefault();
     try {
@@ -98,6 +171,8 @@ export default function ManagerPortal() {
         address: myHotel.address,
         phone_number: myHotel.phone_number,
         base_price_per_night: myHotel.base_price_per_night,
+        latitude: mapPosition ? mapPosition[0] : myHotel.latitude,
+        longitude: mapPosition ? mapPosition[1] : myHotel.longitude,
       });
       if (res.success) {
         toast.success('Hotel details updated successfully!');
@@ -213,11 +288,9 @@ export default function ManagerPortal() {
       setIsEditingRule(false);
       setRuleForm({
         id: null,
-        season_factor: 1.0,
-        occupancy_factor: 1.0,
-        event_factor: 1.0,
-        weekend_factor: 1.0,
-        manual_factor: 1.0,
+        rule_type: 'season',
+        rule_target: 'Summer',
+        multiplier: 1.0,
         reason: '',
       });
     }
@@ -253,6 +326,7 @@ export default function ManagerPortal() {
         <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3 overflow-x-auto">
           {[
             { id: 'hotel', name: 'My Hotel', icon: Hotel },
+              { id: 'settings', name: 'Settings & Media', icon: Settings },
             { id: 'rooms', name: 'Suites & Rooms', icon: BedDouble },
             { id: 'bookings', name: 'Guest Reservations', icon: CalendarCheck },
             { id: 'pricing', name: 'Dynamic Pricing', icon: TrendingUp },
@@ -332,6 +406,32 @@ export default function ManagerPortal() {
                   </div>
                 </div>
 
+                <div className="mt-6">
+                  <label className="block text-xs font-semibold text-slate-700 mb-2 flex items-center gap-1.5">
+                    <MapPin className="w-4 h-4 text-brand-500" /> Exact Map Location
+                  </label>
+                  <p className="text-[11px] text-slate-500 mb-3">
+                    Click anywhere on the map or drag the map to set the exact geographic location of your hotel.
+                  </p>
+                  <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden relative" style={{ height: '350px', width: '100%', display: 'block', backgroundColor: '#e2e8f0' }}>
+                    <MapContainer
+                      center={mapPosition || [myHotel?.latitude || 24.7136, myHotel?.longitude || 46.6753]}
+                      zoom={mapPosition || myHotel?.latitude ? 13 : 3}
+                      style={{ height: '350px', width: '100%' }}
+                      scrollWheelZoom={true}
+                    >
+                      <TileLayer
+                        attribution='&copy; OpenStreetMap contributors'
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      />
+                      <LocationMarker 
+                        position={mapPosition || (myHotel?.latitude ? [myHotel.latitude, myHotel.longitude] : null)} 
+                        setPosition={setMapPosition} 
+                      />
+                    </MapContainer>
+                  </div>
+                </div>
+
                 <button type="submit" className="btn-primary mt-4">
                   Save Changes
                 </button>
@@ -339,7 +439,45 @@ export default function ManagerPortal() {
             ) : (
               <div className="text-center py-12 glass-panel">No hotel assigned to your account.</div>
             )
-          ) : activeTab === 'rooms' ? (
+          
+            ) : activeTab === 'settings' ? (
+              <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-xl font-bold text-slate-900 dark:text-white">Hotel Settings & Media</h3>
+                </div>
+                
+                                  
+
+                <div className="glass-panel p-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Image className="w-5 h-5 text-brand-600" />
+                    <h4 className="font-bold text-slate-800">Hotel Image Gallery</h4>
+                  </div>
+                  <div className="flex gap-4 mb-6 items-center">
+                    <input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files[0])} className="input-field text-sm" />
+                    <button onClick={handleUploadImage} disabled={uploadingImage || !imageFile} className="btn-primary px-6 py-2 rounded-xl shrink-0">
+                      {uploadingImage ? 'Uploading...' : 'Upload Image'}
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    {myHotel?.images && myHotel.images.map(img => (
+                      <div key={img.id} className="relative group rounded-xl overflow-hidden shadow-sm border border-slate-200">
+                        <img src={getImageUrl(img.image_url)} alt="Hotel" className="w-full h-40 object-cover" />
+                        <button onClick={() => handleDeleteImage(img.id)} className="absolute top-2 right-2 p-2 bg-red-500/90 hover:bg-red-600 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                    {(!myHotel?.images || myHotel.images.length === 0) && (
+                      <div className="col-span-full py-8 text-center text-slate-500 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                        No gallery images uploaded yet.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+) : activeTab === 'rooms' ? (
             <div className="space-y-6">
               <div className="flex justify-between items-center">
                 <h3 className="text-xl font-bold text-slate-900 dark:text-white">Manage Suites & Rooms</h3>
@@ -351,36 +489,13 @@ export default function ManagerPortal() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {rooms.map((r) => (
-                  <div key={r.id} className="glass-card p-6 flex flex-col justify-between">
-                    <div>
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="badge bg-brand-500/10 text-brand-400 border border-brand-500/30 capitalize font-bold">
-                          {r.room_type} Suite
-                        </span>
-                        <button
-                          onClick={() => handleDeleteRoom(r.id)}
-                          className="p-1 rounded text-slate-400 hover:text-rose-400"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-                        Max Capacity: {r.capacity} Guest(s)
-                      </p>
-                    </div>
-
-                    <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
-                      <div>
-                        <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase">Rate</span>
-                        <p className="text-lg font-bold text-slate-900 dark:text-white">€{r.price_per_night}</p>
-                      </div>
-                      <span className="text-xs font-bold text-emerald-400">
-                        {r.available_rooms} Available
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                    <ManagerRoomCard 
+                      key={r.id} 
+                      room={r} 
+                      onRoomUpdated={fetchData} 
+                      onDelete={handleDeleteRoom} 
+                    />
+                  ))}
               </div>
             </div>
           ) : activeTab === 'bookings' ? (
@@ -409,7 +524,7 @@ export default function ManagerPortal() {
                       </h4>
                       <p className="text-xs text-slate-500 dark:text-slate-400">
                         {new Date(b.check_in_date).toLocaleDateString()} to{' '}
-                        {new Date(b.check_out_date).toLocaleDateString()} — Total: €
+                        {new Date(b.check_out_date).toLocaleDateString()} — Total: USD{' '}
                         {Number(b.total_price).toFixed(2)}
                       </p>
                     </div>
@@ -487,30 +602,29 @@ export default function ManagerPortal() {
                         </div>
                         
                         <h4 className="text-sm font-bold text-slate-900 mb-1">{rule.reason || 'Unnamed Rule'}</h4>
-                        
+                          
                         <div className="grid grid-cols-2 gap-y-2 mt-4 text-xs">
                           <div className="flex flex-col">
-                            <span className="text-slate-500">Season</span>
-                            <span className="font-semibold text-slate-900">{rule.season_factor}x</span>
+                            <span className="text-slate-500">Applies To</span>
+                            <span className="font-semibold text-slate-900">
+                              {rule.rule_type === 'season' ? 'Season: ' : rule.rule_type === 'day_type' ? 'Day Type: ' : 'General '}
+                              {rule.rule_target || 'All'}
+                            </span>
                           </div>
                           <div className="flex flex-col">
-                            <span className="text-slate-500">Weekend</span>
-                            <span className="font-semibold text-slate-900">{rule.weekend_factor}x</span>
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="text-slate-500">Occupancy</span>
-                            <span className="font-semibold text-slate-900">{rule.occupancy_factor}x</span>
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="text-slate-500">Event/Manual</span>
-                            <span className="font-semibold text-slate-900">{Math.max(rule.event_factor, rule.manual_factor)}x</span>
+                            <span className="text-slate-500">Multiplier</span>
+                            <span className="font-bold text-brand-600">
+                              {rule.multiplier ? `${rule.multiplier}x` : '1.0x'}
+                              {rule.multiplier > 1.0 ? ` (+${Math.round((rule.multiplier - 1) * 100)}%)` : ''}
+                              {rule.multiplier < 1.0 && rule.multiplier > 0 ? ` (-${Math.round((1 - rule.multiplier) * 100)}%)` : ''}
+                            </span>
                           </div>
                         </div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
             </div>
           ) : activeTab === 'deals' ? (
             <div className="space-y-6">
@@ -571,82 +685,73 @@ export default function ManagerPortal() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Season Factor</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0.1"
-                    value={ruleForm.season_factor}
-                    onChange={(e) => setRuleForm({ ...ruleForm, season_factor: e.target.value })}
-                    className="input-field text-xs"
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Rule Type</label>
+                <select
+                  value={ruleForm.rule_type || 'season'}
+                  onChange={(e) => setRuleForm({ ...ruleForm, rule_type: e.target.value, rule_target: e.target.value === 'season' ? 'Summer' : 'Peak' })}
+                  className="input-field text-sm"
+                  required
+                >
+                  <option value="season">Season-based</option>
+                  <option value="day_type">Day of Week-based</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Applies To</label>
+                {ruleForm.rule_type === 'day_type' ? (
+                  <select
+                    value={ruleForm.rule_target || 'Peak'}
+                    onChange={(e) => setRuleForm({ ...ruleForm, rule_target: e.target.value })}
+                    className="input-field text-sm"
                     required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Weekend Factor</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0.1"
-                    value={ruleForm.weekend_factor}
-                    onChange={(e) => setRuleForm({ ...ruleForm, weekend_factor: e.target.value })}
-                    className="input-field text-xs"
+                  >
+                    <option value="Peak">Peak Days (Thu-Sun)</option>
+                    <option value="Normal">Normal Days (Mon-Wed)</option>
+                  </select>
+                ) : (
+                  <select
+                    value={ruleForm.rule_target || 'Summer'}
+                    onChange={(e) => setRuleForm({ ...ruleForm, rule_target: e.target.value })}
+                    className="input-field text-sm"
                     required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Occupancy Factor</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0.1"
-                    value={ruleForm.occupancy_factor}
-                    onChange={(e) => setRuleForm({ ...ruleForm, occupancy_factor: e.target.value })}
-                    className="input-field text-xs"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Event Factor</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0.1"
-                    value={ruleForm.event_factor}
-                    onChange={(e) => setRuleForm({ ...ruleForm, event_factor: e.target.value })}
-                    className="input-field text-xs"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Manual Factor</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0.1"
-                    value={ruleForm.manual_factor}
-                    onChange={(e) => setRuleForm({ ...ruleForm, manual_factor: e.target.value })}
-                    className="input-field text-xs"
-                    required
-                  />
-                </div>
-                {isEditingRule && (
-                  <div className="flex items-center mt-6">
-                    <input
-                      type="checkbox"
-                      id="rule_active"
-                      checked={ruleForm.is_active}
-                      onChange={(e) => setRuleForm({ ...ruleForm, is_active: e.target.checked })}
-                      className="mr-2"
-                    />
-                    <label htmlFor="rule_active" className="text-xs font-semibold text-slate-600 dark:text-slate-300">
-                      Is Active
-                    </label>
-                  </div>
+                  >
+                    <option value="Summer">Summer (Jun-Aug)</option>
+                    <option value="Winter">Winter (Dec-Feb)</option>
+                    <option value="Spring">Spring (Mar-May)</option>
+                    <option value="Autumn">Autumn (Sep-Nov)</option>
+                  </select>
                 )}
               </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Price Multiplier (e.g. 1.20 for +20%)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.1"
+                  value={ruleForm.multiplier || 1.0}
+                  onChange={(e) => setRuleForm({ ...ruleForm, multiplier: e.target.value })}
+                  className="input-field text-sm"
+                  required
+                />
+              </div>
+
+              {isEditingRule && (
+                <div className="flex items-center mt-6">
+                  <input
+                    type="checkbox"
+                    id="rule_active"
+                    checked={ruleForm.is_active}
+                    onChange={(e) => setRuleForm({ ...ruleForm, is_active: e.target.checked })}
+                    className="mr-2"
+                  />
+                  <label htmlFor="rule_active" className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                    Is Active
+                  </label>
+                </div>
+              )}
 
               <div className="flex justify-end gap-3 pt-4">
                 <button

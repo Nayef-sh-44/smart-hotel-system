@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -77,8 +77,9 @@ export const reviewService = {
 
 // Loyalty endpoints
 export const loyaltyService = {
-  getMyLoyalty: () => api.get('/loyalty/me'),
-  redeemReward: (reward_id) => api.post('/loyalty/redeem', { reward_id }),
+  getMyBalances: () => api.get('/loyalty/my-balances'),
+  getLoyaltyForHotel: (hotelId) => api.get(`/loyalty/hotel/${hotelId}`),
+  redeemReward: (reward_id, hotel_id) => api.post('/loyalty/redeem', { reward_id, hotel_id }),
 };
 
 // Recommendation endpoints
@@ -107,10 +108,19 @@ export const bookingService = {
 export const managerService = {
   getMyHotel: () => api.get('/manager/hotel'),
   updateMyHotel: (data) => api.put('/manager/hotel', data),
+  updateCurrency: (currency) => api.put('/manager/hotel/currency', { currency }),
+  uploadImage: (formData) => api.post('/manager/hotel/images', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  deleteImage: (id) => api.delete(`/manager/hotel/images/${id}`),
   getRooms: () => api.get('/manager/rooms'),
   createRoom: (data) => api.post('/manager/rooms', data),
   updateRoom: (id, data) => api.put(`/manager/rooms/${id}`, data),
   deleteRoom: (id) => api.delete(`/manager/rooms/${id}`),
+  uploadRoomImage: (roomId, formData) => api.post(`/manager/rooms/${roomId}/images`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  deleteRoomImage: (roomId, imageId) => api.delete(`/manager/rooms/${roomId}/images/${imageId}`),
+  updateRoomStatus: (id, status) => api.put(`/manager/rooms/${id}/status`, { status }),
+  updateRoomAvailability: (id, available_rooms) => api.put(`/manager/rooms/${id}/availability`, { available_rooms }),
   getBookings: () => api.get('/manager/bookings'),
   updateBookingStatus: (id, status) => api.put(`/manager/bookings/${id}/status`, { status }),
   getPricingRules: () => api.get('/manager/pricing-rules'),
@@ -121,13 +131,16 @@ export const managerService = {
   createFlashDeal: (data) => api.post('/manager/flash-deals', data),
   updateFlashDeal: (id, data) => api.put(`/manager/flash-deals/${id}`, data),
   deleteFlashDeal: (id) => api.delete(`/manager/flash-deals/${id}`),
+  getCompetitorBenchmarking: () => api.get('/manager/competitor-benchmarking'),
 };
 
 // Admin endpoints
 export const adminService = {
   getAnalytics: () => api.get('/admin/analytics'),
   getUsers: () => api.get('/admin/users'),
+  createUser: (data) => api.post('/admin/users', data),
   updateUserRole: (id, data) => api.put(`/admin/users/${id}/role`, data),
+  deleteUser: (id) => api.delete(`/admin/users/${id}`),
   getHotels: () => api.get('/admin/hotels'),
   createHotel: (data) => api.post('/admin/hotels', data),
   deleteHotel: (id) => api.delete(`/admin/hotels/${id}`),

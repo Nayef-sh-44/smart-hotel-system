@@ -47,6 +47,11 @@ const Hotel = sequelize.define('Hotel', {
     type: DataTypes.TIME,
     allowNull: false,
   },
+  currency: {
+    type: DataTypes.STRING(3),
+    allowNull: false,
+    defaultValue: 'EUR',
+  },
   primary_image_url: {
     type: DataTypes.STRING,
     allowNull: true,

@@ -35,6 +35,8 @@ export default function AdminPortal() {
     hotel_id: '',
   });
 
+
+
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -57,56 +59,45 @@ export default function AdminPortal() {
     fetchData();
   }, [activeTab]);
 
-  const handleRoleChange = async (userId, newRole) => {
+  const handleDeleteUser = async (user) => {
+    if (!window.confirm(`Are you sure you want to delete this hotel manager account and its hotel?`)) {
+       return;
+    }
     try {
-      const res = await adminService.updateUserRole(userId, { role: newRole });
+      const res = await adminService.deleteUser(user.id);
       if (res.success) {
-        toast.success(`User role updated to ${newRole}`);
+        toast.success(`Account deleted successfully.`);
         fetchData();
       }
     } catch (err) {
-      toast.error('Could not update role');
+      toast.error(err.response?.data?.error?.message || err.error?.message || 'Could not delete user account');
     }
   };
 
   const handleCreateManager = async (e) => {
     e.preventDefault();
     try {
-      if (!managerForm.hotel_id) {
-        toast.error('Please select a hotel');
-        return;
-      }
-      // 1. Create a regular user
-      const registerRes = await authService.register({
+      const res = await adminService.createUser({
         full_name: managerForm.full_name,
         email: managerForm.email,
         password: managerForm.password,
         phone_number: managerForm.phone_number,
+        role: 'hotel_manager'
       });
 
-      if (registerRes.success) {
-        const newUserId = registerRes.data.user.id;
-        // 2. Upgrade to hotel_manager and link to hotel
-        const roleRes = await adminService.updateUserRole(newUserId, {
-          role: 'hotel_manager',
-          hotel_id: Number(managerForm.hotel_id),
+      if (res.success) {
+        toast.success('Hotel Manager created successfully!');
+        setManagerForm({
+          full_name: '',
+          email: '',
+          password: '',
+          phone_number: '',
         });
-
-        if (roleRes.success) {
-          toast.success('Hotel Manager Account created successfully!');
-          setManagerModalOpen(false);
-          setManagerForm({
-            full_name: '',
-            email: '',
-            password: '',
-            phone_number: '',
-            hotel_id: '',
-          });
-          fetchData();
-        }
+        setManagerModalOpen(false);
+        fetchData();
       }
     } catch (err) {
-      toast.error(err.response?.data?.error?.message || err.error?.message || 'Failed to create manager account');
+      toast.error(err.response?.data?.error?.message || err.error?.message || 'Could not create manager');
     }
   };
 
@@ -181,11 +172,14 @@ export default function AdminPortal() {
                       <th className="pb-3">Email</th>
                       <th className="pb-3">Phone</th>
                       <th className="pb-3">Role</th>
+                      <th className="pb-3">Assigned Hotel</th>
                       <th className="pb-3">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
-                    {usersList.map((u) => (
+                    {usersList.map((u) => {
+                      const assignedHotel = hotelsList.find(h => h.id === u.hotel_id);
+                      return (
                       <tr key={u.id}>
                         <td className="py-3 font-bold text-slate-900 dark:text-white">{u.full_name}</td>
                         <td className="py-3">{u.email}</td>
@@ -195,19 +189,23 @@ export default function AdminPortal() {
                             {u.role}
                           </span>
                         </td>
-                        <td className="py-3">
-                          <select
-                            value={u.role}
-                            onChange={(e) => handleRoleChange(u.id, e.target.value)}
-                            className="px-2 py-1 rounded bg-white dark:bg-dark-900 border border-slate-300 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-200"
-                          >
-                            <option value="user">User</option>
-                            <option value="hotel_manager">Hotel Manager</option>
-                            <option value="system_admin">System Admin</option>
-                          </select>
+                        <td className="py-3 font-medium text-slate-700 dark:text-slate-300">
+                          {u.role === 'hotel_manager' ? (assignedHotel ? assignedHotel.name : 'Not Assigned') : '-'}
+                        </td>
+                        <td className="py-3 flex items-center gap-2">
+                          {u.role !== 'admin' && u.role !== 'system_admin' && (
+                            <button
+                               onClick={() => handleDeleteUser(u)}
+                               className="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-1.5 rounded-md transition-colors flex items-center gap-1"
+                               title="Delete Account"
+                            >
+                               <Trash2 className="w-4 h-4" />
+                               <span className="sr-only">Delete</span>
+                            </button>
+                          )}
                         </td>
                       </tr>
-                    ))}
+                    )})}
                   </tbody>
                 </table>
               </div>
@@ -268,21 +266,6 @@ export default function AdminPortal() {
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Assign to Hotel</label>
-                <select
-                  value={managerForm.hotel_id}
-                  onChange={(e) => setManagerForm({ ...managerForm, hotel_id: e.target.value })}
-                  className="input-field text-sm"
-                  required
-                >
-                  <option value="" disabled>Select a hotel...</option>
-                  {hotelsList.map((h) => (
-                    <option key={h.id} value={h.id}>{h.name}</option>
-                  ))}
-                </select>
-              </div>
-
               <div className="flex justify-end gap-3 pt-4">
                 <button
                   type="button"
@@ -299,6 +282,8 @@ export default function AdminPortal() {
           </div>
         </div>
       )}
+
+
     </div>
   );
 }
