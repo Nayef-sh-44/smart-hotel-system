@@ -4,11 +4,12 @@ import { useCurrency } from '../hooks/useCurrency.js';
 import { Calculator, Hotel, Users, Calendar, Euro, MapPin, Coffee, Car, CreditCard, RotateCcw } from 'lucide-react';
 
 export default function TripCostCalculator() {
-  const { symbol, convertFromUSD, currency: userCurrency } = useCurrency();
+  const { symbol, convertFromUSD, formatPrice, currency: userCurrency } = useCurrency();
   const [hotels, setHotels] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Form State
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedHotelId, setSelectedHotelId] = useState('');
   const [selectedRoomId, setSelectedRoomId] = useState('');
   const [checkIn, setCheckIn] = useState('');
@@ -62,15 +63,15 @@ export default function TripCostCalculator() {
   const totalGuests = Number(adults) + Number(children);
   
   const roomPricePerNight = selectedRoom ? Number(selectedRoom.price_per_night) : 0;
-  const hotelCostInUserCurrency = convertFromUSD(roomPricePerNight, selectedHotel?.currency || 'EUR', userCurrency) * Number(numRooms) * nights;
+  const hotelCostInUserCurrency = convertFromUSD(roomPricePerNight, userCurrency) * Number(numRooms) * nights;
   
   const tripDays = nights > 0 ? nights + 1 : 0;
   
   const cityAvgFood = selectedHotel?.city?.avg_daily_food_cost ? Number(selectedHotel.city.avg_daily_food_cost) : null;
   const cityAvgTransport = selectedHotel?.city?.avg_daily_transport_cost ? Number(selectedHotel.city.avg_daily_transport_cost) : null;
 
-  const foodCostInUserCurrency = cityAvgFood !== null ? convertFromUSD(cityAvgFood, 'EUR', userCurrency) * totalGuests * tripDays : 0;
-  const transportInUserCurrency = cityAvgTransport !== null ? convertFromUSD(cityAvgTransport, 'EUR', userCurrency) * totalGuests * tripDays : 0;
+  const foodCostInUserCurrency = cityAvgFood !== null ? convertFromUSD(cityAvgFood, userCurrency) * totalGuests * tripDays : 0;
+  const transportInUserCurrency = cityAvgTransport !== null ? convertFromUSD(cityAvgTransport, userCurrency) * totalGuests * tripDays : 0;
   
   const activitiesInUserCurrency = Number(activitiesCost) || 0;
   const otherInUserCurrency = Number(otherCost) || 0;
@@ -83,7 +84,7 @@ export default function TripCostCalculator() {
     if (checkIn && checkOut && nights <= 0) return "Check-out must be after check-in date.";
     if (adults < 1) return "At least 1 adult is required.";
     if (numRooms < 1) return "At least 1 room is required.";
-    if (activities < 0 || other < 0) return "Costs cannot be negative.";
+    if (activitiesCost < 0 || otherCost < 0) return "Costs cannot be negative.";
     return null;
   };
 
@@ -91,6 +92,7 @@ export default function TripCostCalculator() {
   const isValid = !validationError && selectedHotelId && selectedRoomId && nights > 0;
 
   const handleReset = () => {
+    setSearchQuery('');
     setSelectedHotelId('');
     setSelectedRoomId('');
     setCheckIn('');
@@ -128,19 +130,26 @@ export default function TripCostCalculator() {
               </h2>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1">
+                  <div className="space-y-1">
                   <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">Select Hotel</label>
-                  <select 
-                    value={selectedHotelId}
-                    onChange={(e) => setSelectedHotelId(e.target.value)}
+                  <input 
+                    list="hotel-list"
+                    type="text"
+                    placeholder={loading ? 'Loading hotels...' : 'Search for a hotel...'}
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      const match = hotels.find(h => h.name === e.target.value);
+                      setSelectedHotelId(match ? match.id : '');
+                    }}
                     className="w-full bg-slate-50 dark:bg-dark-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-brand-500 outline-none"
                     disabled={loading}
-                  >
-                    <option value="">{loading ? 'Loading hotels...' : '-- Choose a Hotel --'}</option>
+                  />
+                  <datalist id="hotel-list">
                     {hotels.map(h => (
-                      <option key={h.id} value={h.id}>{h.name}</option>
+                      <option key={h.id} value={h.name} />
                     ))}
-                  </select>
+                  </datalist>
                 </div>
 
                 <div className="space-y-1">
@@ -230,7 +239,7 @@ export default function TripCostCalculator() {
                   <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1"><Car className="w-3 h-3"/> Daily Transport (per person)</label>
                   <div className="w-full bg-slate-100 dark:bg-dark-900/50 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-500 dark:text-slate-400 cursor-not-allowed">
                     {selectedHotelId && cityAvgTransport !== null 
-                      ? `${symbol}${convertFromUSD(cityAvgTransport, 'EUR', userCurrency).toFixed(0)} (City Avg)` 
+                      ? `${symbol}${convertFromUSD(cityAvgTransport, userCurrency).toFixed(0)} (City Avg)` 
                       : selectedHotelId ? 'No data available' : 'Select a hotel first'}
                   </div>
                 </div>
@@ -239,7 +248,7 @@ export default function TripCostCalculator() {
                   <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1"><Coffee className="w-3 h-3"/> Daily Food (per person)</label>
                   <div className="w-full bg-slate-100 dark:bg-dark-900/50 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-500 dark:text-slate-400 cursor-not-allowed">
                     {selectedHotelId && cityAvgFood !== null 
-                      ? `${symbol}${convertFromUSD(cityAvgFood, 'EUR', userCurrency).toFixed(0)} (City Avg)` 
+                      ? `${symbol}${convertFromUSD(cityAvgFood, userCurrency).toFixed(0)} (City Avg)` 
                       : selectedHotelId ? 'No data available' : 'Select a hotel first'}
                   </div>
                 </div>
