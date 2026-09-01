@@ -3,6 +3,7 @@ import { Award, History, Gift, Building2, ChevronDown, ChevronUp } from 'lucide-
 import { loyaltyService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 export default function Loyalty() {
   const navigate = useNavigate();
@@ -50,6 +51,23 @@ export default function Loyalty() {
       } finally {
         setLoadingDetails(false);
       }
+    }
+  };
+
+  const handleRedeem = async (rewardId, hotelId) => {
+    try {
+      const res = await loyaltyService.redeemReward(rewardId, hotelId);
+      if (res.success) {
+        toast.success(res.message || 'Reward redeemed successfully!');
+        // Refresh both balances and hotel details
+        fetchBalances();
+        const detailsRes = await loyaltyService.getLoyaltyForHotel(hotelId);
+        if (detailsRes.success) {
+          setHotelDetails(prev => ({ ...prev, [hotelId]: detailsRes.data }));
+        }
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.error?.message || 'Failed to redeem reward.');
     }
   };
 
@@ -148,14 +166,14 @@ export default function Loyalty() {
                                   <p className="text-xs text-slate-500 mb-3">{rew.description}</p>
                                   <button
                                     disabled={balance.current_points < rew.points_cost}
-                                    onClick={() => navigate(`/hotels/${balance.hotel_id}?reward=${rew.id}`)}
+                                    onClick={() => handleRedeem(rew.id, balance.hotel_id)}
                                     className={`w-full text-xs font-semibold py-1.5 rounded transition-colors ${
                                       balance.current_points >= rew.points_cost
                                         ? 'bg-brand-500 hover:bg-brand-600 text-white cursor-pointer'
                                         : 'bg-slate-100 dark:bg-slate-800 text-slate-500 cursor-not-allowed'
                                     }`}
                                   >
-                                    Redeem via Booking Page
+                                    Redeem Now
                                   </button>
                                 </div>
                               ))}

@@ -314,15 +314,16 @@ export default function HotelDetail() {
     }
     setSubmittingBooking(true);
     try {
-      const res = await bookingService.create({
-        hotel_id: hotel.id,
-        room_id: selectedRoom.id,
-        check_in_date: checkInDate,
-        check_out_date: checkOutDate,
-        num_guests: Number(numGuests),
-        special_requests: specialRequests,
-        reward_id: applyReward && pendingReward ? pendingReward.reward.id : null,
-      });
+        const res = await bookingService.create({
+          hotel_id: Number(id),
+          room_id: selectedRoom.id,
+          check_in_date: checkInDate,
+          check_out_date: checkOutDate,
+          num_guests: Number(numGuests),
+          special_requests: specialRequests,
+          reward_id: applyReward && pendingReward && !pendingReward.id ? pendingReward.reward.id : null,
+          instance_id: applyReward && pendingReward && pendingReward.id ? pendingReward.id : null,
+        });
 
       if (res.success) {
         if (res.data.loyalty_points_earned > 0) {

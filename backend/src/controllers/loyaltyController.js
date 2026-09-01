@@ -134,6 +134,7 @@ export const redeemReward = async (req, res, next) => {
     const userLoyalty = await UserLoyalty.findOne({
       where: { user_id: req.user.id, hotel_id: hotel_id },
       transaction,
+      lock: transaction.LOCK.UPDATE
     });
 
     if (!userLoyalty || userLoyalty.current_points < reward.points_cost) {
@@ -144,12 +145,28 @@ export const redeemReward = async (req, res, next) => {
       });
     }
 
-    // Deduct points
-    const newPoints = userLoyalty.current_points - reward.points_cost;
-    await userLoyalty.update({
-      current_points: newPoints,
+    // Deduct points safely
+    const [updatedRows] = await UserLoyalty.update({
+      current_points: sequelize.literal(`current_points - ${reward.points_cost}`),
       updated_at: new Date(),
-    }, { transaction });
+    }, {
+      where: {
+        user_id: req.user.id,
+        hotel_id: hotel_id,
+        current_points: {
+          [Op.gte]: reward.points_cost
+        }
+      },
+      transaction,
+    });
+
+    if (updatedRows === 0) {
+      await transaction.rollback();
+      return res.status(400).json({
+        success: false,
+        error: { message: 'Insufficient loyalty points or concurrent transaction.', status: 400 },
+      });
+    }
 
     // Record transaction
     await LoyaltyTransaction.create({

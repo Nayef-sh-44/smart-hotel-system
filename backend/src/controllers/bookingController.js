@@ -24,6 +24,7 @@ const createBookingSchema = z.object({
   num_rooms: z.number().int().min(1).max(2).optional().default(1),
   voucher_code: z.string().optional().nullable(),
   reward_id: z.number().int().optional().nullable(),
+    instance_id: z.number().int().optional().nullable(),
 });
 
 const updateBookingSchema = z.object({
@@ -173,7 +174,25 @@ export const createBooking = async (req, res, next) => {
       // 2. Loyalty Reward Discount
       let pendingReward = null;
       let userLoyalty = null;
-      if (validated.reward_id) {
+      let appliedInstance = null;
+
+      if (validated.instance_id) {
+        appliedInstance = await UserRewardInstance.findOne({
+          where: {
+            id: validated.instance_id,
+            user_id: req.user.id,
+            hotel_id: validated.hotel_id,
+            is_redeemed: false,
+          },
+          include: [{ model: LoyaltyReward, as: 'reward' }],
+          transaction,
+          lock: transaction.LOCK.UPDATE
+        });
+        if (!appliedInstance) {
+          throw { name: 'ZodError', errors: [{ path: ['instance_id'], message: 'Voucher not found, already redeemed, or belongs to another hotel.' }] };
+        }
+        pendingReward = appliedInstance.reward;
+      } else if (validated.reward_id) {
         pendingReward = await LoyaltyReward.findOne({
           where: { 
             id: validated.reward_id,
@@ -249,33 +268,41 @@ export const createBooking = async (req, res, next) => {
 
 
 
-    if (pendingReward && userLoyalty) {
-      // Deduct points
-      const newPoints = userLoyalty.current_points - pendingReward.points_cost;
-      await userLoyalty.update({
-        current_points: newPoints,
-        updated_at: new Date(),
-      }, { transaction });
-      
-      // Create LoyaltyTransaction
-      await LoyaltyTransaction.create({
-        user_id: req.user.id,
-        hotel_id: validated.hotel_id,
-        booking_id: newBooking.id,
-        transaction_type: 'redeemed',
-        points: -pendingReward.points_cost,
-        description: `Redeemed reward: ${pendingReward.reward_name} for booking ${booking_reference}`,
-      }, { transaction });
-      
-      // Create UserRewardInstance for history
-      await UserRewardInstance.create({
-        user_id: req.user.id,
-        reward_id: pendingReward.id,
-        hotel_id: validated.hotel_id,
-        booking_reference: booking_reference,
-        is_redeemed: true,
-        redeemed_at: new Date(),
-      }, { transaction });
+    if (pendingReward) {
+      if (appliedInstance) {
+        await appliedInstance.update({
+          is_redeemed: true,
+          booking_reference: booking_reference,
+          redeemed_at: new Date(),
+        }, { transaction });
+      } else if (userLoyalty) {
+        // Deduct points
+        const newPoints = userLoyalty.current_points - pendingReward.points_cost;
+        await userLoyalty.update({
+          current_points: newPoints,
+          updated_at: new Date(),
+        }, { transaction });
+        
+        // Create LoyaltyTransaction
+        await LoyaltyTransaction.create({
+          user_id: req.user.id,
+          hotel_id: validated.hotel_id,
+          booking_id: newBooking.id,
+          transaction_type: 'redeemed',
+          points: -pendingReward.points_cost,
+          description: `Redeemed reward: ${pendingReward.reward_name} for booking ${booking_reference}`,
+        }, { transaction });
+        
+        // Create UserRewardInstance for history
+        await UserRewardInstance.create({
+          user_id: req.user.id,
+          reward_id: pendingReward.id,
+          hotel_id: validated.hotel_id,
+          booking_reference: booking_reference,
+          is_redeemed: true,
+          redeemed_at: new Date(),
+        }, { transaction });
+      }
     }
 
     // Award Loyalty Points Immediately
