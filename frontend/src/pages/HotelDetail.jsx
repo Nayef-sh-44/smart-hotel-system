@@ -485,21 +485,6 @@ export default function HotelDetail() {
               {hotel.description ||
                 'Immerse yourself in unrivaled luxury and comfort. Featuring panoramic views, bespoke furnishings, state-of-the-art wellness centers, and gourmet dining experiences curated by award-winning chefs.'}
             </p>
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-4 border-t border-slate-200 dark:border-slate-800/80 text-xs">
-              <div className="flex items-center gap-2 text-slate-300">
-                <Clock className="w-4 h-4 text-brand-400" />
-                <span>Check-in: {hotel.check_in_time || '15:00'}</span>
-              </div>
-              <div className="flex items-center gap-2 text-slate-300">
-                <Clock className="w-4 h-4 text-brand-400" />
-                <span>Check-out: {hotel.check_out_time || '11:00'}</span>
-              </div>
-              <div className="flex items-center gap-2 text-slate-300">
-                <ShieldCheck className="w-4 h-4 text-brand-400" />
-                <span>24/7 Concierge</span>
-              </div>
-            </div>
           </div>
 
           {/* Amenities Grid */}
