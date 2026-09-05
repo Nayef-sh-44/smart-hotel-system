@@ -65,3 +65,20 @@ export const requireRole = (...allowedRoles) => {
     next();
   };
 };
+
+export const optionalAuth = async (req, res, next) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    if (token) {
+      const decoded = verifyToken(token);
+      const user = await User.findByPk(decoded.id);
+      if (user) {
+        req.user = user;
+      }
+    }
+    next();
+  } catch (error) {
+    next();
+  }
+};

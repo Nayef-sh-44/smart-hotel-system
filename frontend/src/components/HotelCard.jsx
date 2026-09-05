@@ -76,8 +76,24 @@ export default function HotelCard({ hotel, isFavoriteInitial = false, onFavorite
     }
   };
 
+  
   const hasFlashDeal = hotel.flashDeals && hotel.flashDeals.length > 0;
   const deal = hasFlashDeal ? hotel.flashDeals[0] : null;
+  
+  let dealStatus = 'none';
+  if (deal) {
+    const now = new Date();
+    const start = new Date(deal.start_datetime);
+    const end = new Date(deal.end_datetime);
+    if (now > end) {
+      dealStatus = 'expired';
+    } else if (now < start) {
+      dealStatus = 'upcoming';
+    } else {
+      dealStatus = 'active';
+    }
+  }
+
 
   return (
     <div className="glass-card group relative flex flex-col overflow-hidden">
@@ -134,14 +150,20 @@ export default function HotelCard({ hotel, isFavoriteInitial = false, onFavorite
         </div>
 
         {/* Flash Deal Tag */}
-        {hasFlashDeal && (
-          <div className="absolute bottom-3 left-3 flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent-100 dark:bg-gradient-to-r dark:from-accent-600 dark:to-amber-500 text-accent-700 dark:text-dark-950 font-bold text-xs shadow-md dark:shadow-lg animate-pulse border border-accent-200 dark:border-0">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>
-              {deal.discount_percentage}% OFF {deal.title}
-            </span>
-          </div>
-        )}
+          {deal && (
+            <div className={"absolute bottom-3 left-3 flex items-center gap-1.5 px-3 py-1 rounded-full font-bold text-xs shadow-md border " + 
+              (dealStatus === 'active' 
+                ? 'bg-rose-600 text-white border-rose-500' 
+                : dealStatus === 'upcoming'
+                ? 'bg-amber-500 text-white border-amber-400'
+                : 'bg-slate-200/90 dark:bg-slate-800/90 text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-700')
+            }>
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>
+                {deal.discount_percentage}% OFF {dealStatus === 'expired' ? '� Expired' : dealStatus === 'upcoming' ? '� Upcoming' : 'Active Deal'}
+              </span>
+            </div>
+          )}
       </div>
 
       {/* Card Content */}

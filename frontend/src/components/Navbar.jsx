@@ -35,7 +35,7 @@ export default function Navbar() {
     { name: 'Hotels', path: '/hotels', icon: Hotel },
     { name: 'Compare', path: '/compare', icon: Scale, badge: count > 0 ? count : null },
     { name: 'Favorites', path: '/favorites', icon: Heart },
-    { name: 'Trip Cost', path: '/trip-cost', icon: Calculator },
+    { name: 'Trip Plan', path: '/trip-plan', icon: Calculator },
     { name: 'Loyalty Rewards', path: '/loyalty', icon: Award },
   ];
 

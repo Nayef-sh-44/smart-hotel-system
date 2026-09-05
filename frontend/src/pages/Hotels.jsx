@@ -165,12 +165,28 @@ export default function Hotels() {
             </p>
           </div>
 
-          <form onSubmit={handleSearchSubmit} className="max-w-4xl mx-auto">
+          
+          <form onSubmit={handleSearchSubmit} className="max-w-4xl mx-auto space-y-6">
             
-            {/* RICH SEARCH PANEL */}
-            <div className="glass-panel p-4 mb-4 animate-in fade-in slide-in-from-top-2 duration-200">
-              {/* Row 1: Destination, Dates, Guests/Rooms */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+            {/* HOTEL NAME SEARCH */}
+            <div className="glass-panel p-5 animate-in fade-in duration-200 border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-dark-900/60 shadow-sm">
+              <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-3 uppercase tracking-wider">Search Hotels</h3>
+              <div className="relative w-full">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search hotel names or keywords..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="input-field pl-12 bg-white dark:bg-dark-950/60 w-full py-3"
+                />
+              </div>
+            </div>
+
+            {/* MAIN SEARCH SECTION */}
+            <div className="glass-panel p-5 animate-in fade-in slide-in-from-top-2 duration-200 border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-dark-900/60 shadow-sm">
+              <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-4 uppercase tracking-wider">Trip Details</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end mb-6">
                 {/* Destination */}
                 <div className="lg:col-span-2">
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Destination / City</label>
@@ -213,37 +229,32 @@ export default function Hotels() {
                   />
                 </div>
 
-                {/* Search Button */}
-                <button type="submit" className="btn-primary w-full py-2.5">
-                  Search
-                </button>
-              </div>
-
-              {/* Row 2: Guests, Rooms, Trip Type */}
-              <div className="grid grid-cols-1 sm:grid-cols-4 lg:grid-cols-5 gap-4 mt-4 items-end">
+                {/* Guests */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Guests</label>
                   <input
                     type="number"
                     min="1"
-                    max="10"
                     value={guests}
                     onChange={(e) => setGuests(e.target.value)}
                     className="input-field text-sm w-full"
                   />
                 </div>
+
+                {/* Rooms */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Rooms</label>
                   <input
                     type="number"
                     min="1"
-                    max="5"
                     value={rooms}
                     onChange={(e) => setRooms(e.target.value)}
                     className="input-field text-sm w-full"
                   />
                 </div>
-                <div className="sm:col-span-2 lg:col-span-3">
+
+                {/* Trip Type */}
+                <div className="sm:col-span-2">
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Trip Type</label>
                   <div className="flex flex-wrap gap-2">
                     {['business', 'family', 'couple', 'solo'].map((type) => (
@@ -251,11 +262,7 @@ export default function Hotels() {
                         key={type}
                         type="button"
                         onClick={() => setTripType(type)}
-                        className={`px-3 py-1.5 rounded text-xs font-medium capitalize transition-colors ${
-                          tripType === type 
-                          ? 'bg-brand-600 text-white' 
-                          : 'bg-white text-slate-600 border border-slate-300 hover:bg-slate-50 dark:bg-dark-950/60 dark:text-slate-400 dark:border-slate-700 dark:hover:text-white'
-                        }`}
+                        className={"px-3 py-1.5 rounded text-xs font-medium capitalize transition-colors " + (tripType === type ? 'bg-brand-600 text-white' : 'bg-white text-slate-600 border border-slate-300 hover:bg-slate-50 dark:bg-dark-950/60 dark:text-slate-400 dark:border-slate-700 dark:hover:text-white')}
                       >
                         {type}
                       </button>
@@ -263,29 +270,20 @@ export default function Hotels() {
                   </div>
                 </div>
               </div>
+
             </div>
 
-            {/* Keyword Search & Core Filters */}
-            <div className="glass-panel p-4 mt-4 animate-in fade-in duration-200">
-              <div className="flex flex-col md:flex-row gap-4 items-center">
-                {/* Keyword */}
-                <div className="relative flex-1 w-full">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                  <input
-                    type="text"
-                    placeholder="Search hotel names or keywords..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="input-field pl-12 bg-white dark:bg-dark-950/60"
-                  />
-                </div>
-
+            {/* FILTER SECTION */}
+            <div className="glass-panel p-5 animate-in fade-in duration-200 border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-dark-900/60 shadow-sm">
+              <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-4 uppercase tracking-wider">Filters</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center mb-4">
                 {/* Star Rating */}
-                <div className="w-full md:w-48 shrink-0">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Star Rating</label>
                   <select
                     value={starFilter}
                     onChange={(e) => setStarFilter(e.target.value)}
-                    className="input-field bg-white dark:bg-dark-950/60 font-medium"
+                    className="input-field bg-white dark:bg-dark-950/60 font-medium w-full"
                   >
                     <option value="">Any Star Rating</option>
                     <option value="5">5 Stars</option>
@@ -295,23 +293,26 @@ export default function Hotels() {
                 </div>
 
                 {/* Target Budget */}
-                <div className="w-full md:w-48 shrink-0 relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-400">{symbol}</span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="10"
-                    placeholder="Max Price / Night"
-                    value={targetPrice}
-                    onChange={(e) => setTargetPrice(e.target.value)}
-                    className="input-field pl-8 bg-white dark:bg-dark-950/60 font-medium"
-                  />
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Max Price / Night</label>
+                  <div className="relative w-full">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-400">{symbol}</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="10"
+                      placeholder="Max Price"
+                      value={targetPrice}
+                      onChange={(e) => setTargetPrice(e.target.value)}
+                      className="input-field pl-8 bg-white dark:bg-dark-950/60 font-medium w-full"
+                    />
+                  </div>
                 </div>
               </div>
 
               {/* Top Amenities */}
               {topAmenities.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-800/80">
+                <div className="pt-4 border-t border-slate-200 dark:border-slate-800/80">
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">Key Services</label>
                   <div className="flex flex-wrap gap-2">
                     {topAmenities.map((a) => (
@@ -319,11 +320,7 @@ export default function Hotels() {
                         key={a.id}
                         type="button"
                         onClick={() => handleAmenityToggle(a.id)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${
-                          selectedAmenities.includes(a.id)
-                            ? 'bg-brand-50 text-brand-700 border-brand-200 dark:bg-brand-600/20 dark:text-brand-400 dark:border-brand-500/40'
-                            : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50 dark:bg-dark-950/60 dark:text-slate-400 dark:border-slate-800 dark:hover:text-white'
-                        }`}
+                        className={"px-3 py-1.5 rounded-full text-xs font-medium transition-colors border " + (selectedAmenities.includes(a.id) ? 'bg-brand-50 text-brand-700 border-brand-200 dark:bg-brand-600/20 dark:text-brand-400 dark:border-brand-500/40' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50 dark:bg-dark-950/60 dark:text-slate-400 dark:border-slate-800 dark:hover:text-white')}
                       >
                         {a.name}
                       </button>
@@ -332,7 +329,18 @@ export default function Hotels() {
                 </div>
               )}
             </div>
-          </form>
+          
+            {/* FINAL SEARCH BUTTON */}
+            <div className="flex justify-center pt-8 mt-8 border-t border-slate-200 dark:border-slate-800/80">
+              <button
+                type="submit"
+                className="w-full sm:w-2/3 md:w-1/2 bg-brand-600 hover:bg-brand-700 text-white py-4 px-8 rounded-xl shadow-xl shadow-brand-500/20 dark:shadow-brand-900/20 font-bold text-lg transition-colors flex items-center justify-center gap-2"
+              >
+                <Search className="w-6 h-6" /> Search
+              </button>
+            </div>
+</form>
+
         </div>
       </section>
 

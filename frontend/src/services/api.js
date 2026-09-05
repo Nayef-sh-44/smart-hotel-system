@@ -49,6 +49,8 @@ export const authService = {
 export const hotelService = {
   getAll: (params) => api.get('/hotels', { params }),
   getById: (id) => api.get(`/hotels/${id}`),
+  getNearbyServices: (id) => api.get(`/hotels/${id}/nearby-services`),
+  getPricePreview: (id, params) => api.get(`/hotels/${id}/price-preview`, { params }),
 };
 
 // City endpoints

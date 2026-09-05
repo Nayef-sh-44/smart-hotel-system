@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import toast from 'react-hot-toast';
 import { getImageUrl } from '../utils/imageUtils.js';
 import ManagerRoomCard from '../components/ManagerRoomCard.jsx';
+import BenchmarkingView from '../components/BenchmarkingView.jsx';
 import {
   Briefcase, Settings, Image, DollarSign,
   Hotel,
@@ -11,6 +12,7 @@ import {
   CalendarCheck,
   TrendingUp,
   Sparkles,
+  BarChart2,
   Plus,
   Trash2,
   CheckCircle2,
@@ -45,9 +47,10 @@ const LocationMarker = ({ position, setPosition }) => {
   );
 };
 
-export default function ManagerPortal() {
+export default function ManagerPortal({ defaultTab = 'hotel' }) {
   const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState('hotel');
+  const [activeTab, setActiveTab] = useState(defaultTab);
+  const [benchmarkingData, setBenchmarkingData] = useState(null);
   const [loading, setLoading] = useState(true);
 
     const [imageFile, setImageFile] = useState(null);
@@ -114,6 +117,9 @@ export default function ManagerPortal() {
       } else if (activeTab === 'deals') {
         const res = await managerService.getFlashDeals();
         if (res.success) setFlashDeals(res.data);
+      } else if (activeTab === 'benchmarking') {
+        const res = await managerService.getCompetitorBenchmarking();
+        if (res.success) setBenchmarkingData(res.data);
       }
     } catch (err) {
       toast.error(err.error?.message || 'Error loading manager data');
@@ -331,6 +337,7 @@ export default function ManagerPortal() {
             { id: 'bookings', name: 'Guest Reservations', icon: CalendarCheck },
             { id: 'pricing', name: 'Dynamic Pricing', icon: TrendingUp },
             { id: 'deals', name: 'Flash Deals', icon: Sparkles },
+            { id: 'benchmarking', name: 'Competitor Benchmarking', icon: BarChart2 },
           ].map((t) => {
             const Icon = t.icon;
             return (
@@ -661,7 +668,9 @@ export default function ManagerPortal() {
                 ))}
               </div>
             </div>
-          ) : null}
+          ) : activeTab === 'benchmarking' ? (
+              <BenchmarkingView data={benchmarkingData} />
+            ) : null}
         </div>
       </div>
 

@@ -6,6 +6,7 @@ import {
   Review,
   DynamicPricingRule,
   FlashDeal,
+  Favorite
 } from '../models/index.js';
 
 export const getRecommendations = async (req, res, next) => {
@@ -54,9 +55,58 @@ export const getRecommendations = async (req, res, next) => {
     const userCurrency = req.query.user_currency || 'USD';
     const targetBudgetUsd = targetPriceNum ? (userCurrency === 'EUR' ? targetPriceNum * 1.10 : targetPriceNum) : null;
 
+    const userFavoritesData = req.user ? await Favorite.findAll({ 
+      where: { user_id: req.user.id },
+      include: [{ model: Hotel, as: 'hotel', attributes: ['id', 'city_id'] }]
+    }) : [];
+
+    const calculateFavoritePreference = (hotel, userFavorites, searchRegionId) => {
+      let favoriteScore = 0;
+      let isFavorite = false;
+      
+      if (!userFavorites || userFavorites.length === 0) {
+        return { favoriteScore, isFavorite };
+      }
+
+      const hotelRegion = hotel.city_id;
+      
+      // Condition 1: Only consider favorites in the searchRegion
+      const regionalFavorites = userFavorites.filter(fav => fav.hotel && fav.hotel.city_id === searchRegionId);
+
+      // Only apply favorite logic if the hotel belongs to the search region
+      if (hotelRegion === searchRegionId && regionalFavorites.length > 0) {
+        // Condition 2: Is the hotel itself a favorite?
+        isFavorite = regionalFavorites.some(fav => fav.hotel_id === hotel.id);
+        if (isFavorite) {
+          favoriteScore += 15; // Moderate boost
+        }
+        
+        // Condition 3: Pattern preference in the region
+        if (regionalFavorites.length === 1) {
+          favoriteScore += 3;
+        } else if (regionalFavorites.length >= 2) {
+          favoriteScore += Math.min(8, regionalFavorites.length * 2);
+        }
+      }
+
+      return { favoriteScore, isFavorite };
+    };
+
     const scoredHotels = allHotels.map((hotel) => {
       let score = 0;
       const matchReasons = [];
+      
+      // Determine searchRegion from the currently evaluated hotel (since allHotels is already filtered by search query)
+      const searchRegionId = hotel.city_id;
+      
+      const { favoriteScore, isFavorite } = calculateFavoritePreference(hotel, userFavoritesData, searchRegionId);
+      
+      if (favoriteScore > 0) {
+        score += favoriteScore;
+      }
+      if (isFavorite) {
+        matchReasons.push('One of your Favorite Hotels');
+      }
 
       // 1. Star Rating
       const starRating = Number(hotel.star_rating || 0);
@@ -65,28 +115,7 @@ export const getRecommendations = async (req, res, next) => {
         matchReasons.push('Luxury 5-star experience');
       }
 
-      // 2. Trip Type Alignment (Indirect influence based on amenities/features)
-      if (trip_type) {
-        const hotelAmenityNames = (hotel.amenities || []).map(a => a.name.toLowerCase());
-        let tripScore = 0;
-        
-        if (trip_type.toLowerCase() === 'business') {
-          if (hotelAmenityNames.some(name => name.includes('wifi') || name.includes('wi-fi'))) tripScore += 10;
-          if (hotelAmenityNames.some(name => name.includes('business') || name.includes('meeting'))) tripScore += 15;
-        } else if (trip_type.toLowerCase() === 'family') {
-          if (hotelAmenityNames.some(name => name.includes('pool') || name.includes('family'))) tripScore += 15;
-          if (hotel.rooms && hotel.rooms.some(r => r.capacity >= 4)) tripScore += 10;
-        } else if (trip_type.toLowerCase() === 'couple') {
-          if (hotelAmenityNames.some(name => name.includes('spa') || name.includes('massage') || name.includes('dining'))) tripScore += 15;
-        } else if (trip_type.toLowerCase() === 'solo') {
-           if (hotelAmenityNames.some(name => name.includes('wifi') || name.includes('bar') || name.includes('gym'))) tripScore += 10;
-        }
-        
-        if (tripScore > 0) {
-          matchReasons.push(`Great for ${trip_type} trips`);
-        }
-        score += tripScore;
-      }
+      
 
       // 3. Price Proximity
       if (targetBudgetUsd) {
@@ -135,9 +164,14 @@ export const getRecommendations = async (req, res, next) => {
         matchReasons.push('Active Flash Deal available');
       }
       
+      const finalScore = Math.round(score);
+      
+      // 10. Logging / Debug
+      console.log(`[Recommendation DEBUG] hotelId=${hotel.id}, hotelRegion=${hotel.city_id}, searchRegion=${searchRegionId}, isFavorite=${isFavorite}, favoritePreferenceScore=${favoriteScore}, finalRecommendationScore=${finalScore}`);
+
       return {
         hotel,
-        recommendationScore: Math.round(score),
+        recommendationScore: finalScore,
         matchReasons: matchReasons.length > 0 ? matchReasons : ['Recommended for overall quality & comfort'],
       };
     });

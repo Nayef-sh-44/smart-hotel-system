@@ -1,8 +1,12 @@
 {
   "dependencies": {
-    "puppeteer": "^25.8.0",
+    "puppeteer": "^25.9.0",
     "puppeteer-core": "^25.7.0",
     "sequelize": "^6.37.8",
     "tedious": "^20.0.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "playwright": "^1.62.1"
   }
 }

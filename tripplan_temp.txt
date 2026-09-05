@@ -1,0 +1,9 @@
+﻿import React, { useState, useEffect } from 'react';
+import { useTrip } from '../context/TripContext';
+import { useComparison } from '../context/ComparisonContext';
+import { useNavigate } from 'react-router-dom';
+import { MapPin, Calendar, Users, Hotel, Trash2, Edit2, Plus, Download, Banknote, CheckCircle, CreditCard, X } from 'lucide-react';
+import { hotelService, bookingService } from '../services/api';
+import toast from 'react-hot-toast';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';

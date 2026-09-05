@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import { ComparisonProvider } from './context/ComparisonContext.jsx';
+import { TripProvider } from './context/TripContext.jsx';
 import { RoleGuard, AuthGuard } from './components/RoleGuard.jsx';
 
 // Components
@@ -21,7 +22,7 @@ import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
 import ManagerPortal from './pages/ManagerPortal.jsx';
 import AdminPortal from './pages/AdminPortal.jsx';
-import TripCostCalculator from './pages/TripCostCalculator.jsx';
+import TripPlan from './pages/TripPlan.jsx';
 
 function AppContent() {
   const { user } = useAuth();
@@ -64,9 +65,9 @@ function AppContent() {
               <Loyalty />
             </RoleGuard>
           } />
-          <Route path="/trip-cost" element={
+          <Route path="/trip-plan" element={
             <RoleGuard allowedRoles={['user']}>
-              <TripCostCalculator />
+              <TripPlan />
             </RoleGuard>
           } />
           <Route path="/my-bookings" element={
@@ -95,7 +96,12 @@ function AppContent() {
           {/* Hotel Manager Portal (Manager ONLY) */}
           <Route path="/manager" element={
             <RoleGuard allowedRoles={['hotel_manager']}>
-              <ManagerPortal />
+              <ManagerPortal defaultTab="hotel" />
+            </RoleGuard>
+          } />
+          <Route path="/manager/benchmarking" element={
+            <RoleGuard allowedRoles={['hotel_manager']}>
+              <ManagerPortal defaultTab="benchmarking" />
             </RoleGuard>
           } />
 
@@ -117,7 +123,7 @@ function AppContent() {
       {/* Footer */}
       <footer className="border-t border-slate-200 py-8 bg-slate-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-4">
-          <span>© {new Date().getFullYear()} SmartHotel Pro. All rights reserved.</span>
+          <span>Ac {new Date().getFullYear()} SmartHotel Pro. All rights reserved.</span>
           <span className="flex items-center gap-2">
             <span>Powered by React 19, Vite & Node.js</span>
           </span>
@@ -147,7 +153,9 @@ export default function App() {
     <Router>
       <AuthProvider>
         <ComparisonProvider>
-          <AppContent />
+          <TripProvider>
+            <AppContent />
+          </TripProvider>
         </ComparisonProvider>
       </AuthProvider>
     </Router>

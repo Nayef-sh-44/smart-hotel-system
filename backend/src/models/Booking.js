@@ -66,6 +66,10 @@ const Booking = sequelize.define('Booking', {
     type: DataTypes.TEXT,
     allowNull: true,
   },
+  pricing_breakdown_json: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
   created_at: {
     type: DataTypes.DATE,
     allowNull: false,

@@ -393,6 +393,7 @@ export const getCompetitorBenchmarking = async (req, res, next) => {
       });
     }
 
+    // My Rating
     const myAvgRating =
       myHotel.reviews && myHotel.reviews.length > 0
         ? Number(
@@ -403,9 +404,20 @@ export const getCompetitorBenchmarking = async (req, res, next) => {
           )
         : Number(myHotel.star_rating);
 
+    // My Occupancy
+    const myBookings = await Booking.findAll({ where: { hotel_id: myHotel.id, status: 'confirmed' } });
+    const myTotalBookedNights = myBookings.reduce((sum, b) => sum + b.total_nights, 0);
+    const myTotalRooms = myHotel.rooms ? myHotel.rooms.reduce((sum, r) => sum + (r.available_rooms || 1), 0) : 1;
+    const myOccupancy = myTotalRooms > 0 
+      ? Math.min(100, (myTotalBookedNights / (myTotalRooms * 30)) * 100) 
+      : 0;
+    const myAvgPrice = Number(myHotel.base_price_per_night);
+
+    // Competitors
     const competitorHotels = await Hotel.findAll({
       where: {
         city_id: myHotel.city_id,
+        star_rating: myHotel.star_rating,
       },
       include: [
         { model: Review, as: 'reviews' },
@@ -418,9 +430,10 @@ export const getCompetitorBenchmarking = async (req, res, next) => {
 
     let marketAvgPrice = 0;
     let marketAvgRating = 0;
-    let marketAvgStarRating = 0;
+    let marketAvgOccupancy = 0;
 
     if (totalCompetitors > 0) {
+      // Market Price
       marketAvgPrice = Number(
         (
           otherHotels.reduce((sum, h) => sum + Number(h.base_price_per_night || 0), 0) /
@@ -428,13 +441,7 @@ export const getCompetitorBenchmarking = async (req, res, next) => {
         ).toFixed(2)
       );
 
-      marketAvgStarRating = Number(
-        (
-          otherHotels.reduce((sum, h) => sum + Number(h.star_rating || 4), 0) /
-          totalCompetitors
-        ).toFixed(1)
-      );
-
+      // Market Rating
       let totalReviewsCount = 0;
       let totalRatingSum = 0;
       otherHotels.forEach((h) => {
@@ -445,31 +452,62 @@ export const getCompetitorBenchmarking = async (req, res, next) => {
           });
         }
       });
-
       marketAvgRating =
         totalReviewsCount > 0
           ? Number((totalRatingSum / totalReviewsCount).toFixed(1))
-          : marketAvgStarRating;
-    } else {
-      marketAvgPrice = Number(myHotel.base_price_per_night);
-      marketAvgRating = myAvgRating;
-      marketAvgStarRating = Number(myHotel.star_rating);
-    }
+          : Number(myHotel.star_rating);
 
-    const priceDiffPercent =
-      marketAvgPrice > 0
-        ? Number((((Number(myHotel.base_price_per_night) - marketAvgPrice) / marketAvgPrice) * 100).toFixed(1))
+      // Market Occupancy
+      const otherHotelIds = otherHotels.map(h => h.id);
+      const compBookings = await Booking.findAll({ where: { hotel_id: otherHotelIds, status: 'confirmed' } });
+      const compTotalBookedNights = compBookings.reduce((sum, b) => sum + b.total_nights, 0);
+      const compTotalRooms = otherHotels.reduce((sum, h) => {
+        return sum + (h.rooms ? h.rooms.reduce((rSum, r) => rSum + (r.available_rooms || 1), 0) : 1);
+      }, 0);
+      
+      marketAvgOccupancy = compTotalRooms > 0 
+        ? Math.min(100, (compTotalBookedNights / (compTotalRooms * 30)) * 100) 
         : 0;
 
-    const ratingDiff = Number((myAvgRating - marketAvgRating).toFixed(1));
-
-    let recommendation = '';
-    if (priceDiffPercent < -5) {
-      recommendation = `Your rates are ${Math.abs(priceDiffPercent)}% lower than city average (€${marketAvgPrice}). Consider raising prices during high demand periods.`;
-    } else if (priceDiffPercent > 10) {
-      recommendation = `Your rates are ${priceDiffPercent}% above city average (€${marketAvgPrice}). Ensure luxury amenities and guest satisfaction justify premium pricing.`;
     } else {
-      recommendation = `Your rates are well-aligned with the city market average (€${marketAvgPrice}). Monitor seasonal trends for dynamic adjustments.`;
+      // Fallbacks if no competitors
+      marketAvgPrice = myAvgPrice;
+      marketAvgRating = myAvgRating;
+      marketAvgOccupancy = myOccupancy;
+    }
+
+    const priceDiffPercent = marketAvgPrice > 0
+      ? Number((((myAvgPrice - marketAvgPrice) / marketAvgPrice) * 100).toFixed(1))
+      : 0;
+
+    const ratingDiff = Number((myAvgRating - marketAvgRating).toFixed(1));
+    const occupancyDiff = Number((myOccupancy - marketAvgOccupancy).toFixed(1));
+
+    let priceInsights = '';
+    if (priceDiffPercent < -5) {
+      priceInsights = `Your average room price is ${Math.abs(priceDiffPercent)}% below the market average. Consider raising prices to capture more revenue if occupancy allows.`;
+    } else if (priceDiffPercent > 5) {
+      priceInsights = `Your average room price is ${priceDiffPercent}% above the market average. Ensure your amenities justify the premium.`;
+    } else {
+      priceInsights = `Your average room price is aligned with the local market.`;
+    }
+
+    let occInsights = '';
+    if (occupancyDiff < -5) {
+      occInsights = `Your occupancy is ${Math.abs(occupancyDiff)} percentage points below the market average. Consider running a Flash Deal.`;
+    } else if (occupancyDiff > 5) {
+      occInsights = `Your occupancy is ${occupancyDiff} percentage points above the market average! Great job capturing demand.`;
+    } else {
+      occInsights = `Your occupancy matches the local market average.`;
+    }
+
+    let ratInsights = '';
+    if (ratingDiff < -0.2) {
+      ratInsights = `Your hotel rating is below the market average. Focus on improving guest satisfaction.`;
+    } else if (ratingDiff > 0.2) {
+      ratInsights = `Your hotel rating is above the market average. Keep up the excellent service!`;
+    } else {
+      ratInsights = `Your hotel rating is on par with the market average.`;
     }
 
     res.status(200).json({
@@ -478,29 +516,31 @@ export const getCompetitorBenchmarking = async (req, res, next) => {
         myHotel: {
           id: myHotel.id,
           name: myHotel.name,
-          base_price_per_night: Number(myHotel.base_price_per_night),
+          city_name: myHotel.city ? myHotel.city.name : 'Unknown',
           star_rating: Number(myHotel.star_rating),
-          avg_rating: myAvgRating,
-          review_count: myHotel.reviews ? myHotel.reviews.length : 0,
+          avg_base_price: myAvgPrice,
+          avg_guest_rating: myAvgRating,
+          occupancy_rate: Number(myOccupancy.toFixed(1)),
         },
         marketAverage: {
-          city_name: myHotel.city ? myHotel.city.name : 'Your City',
           total_competitors: totalCompetitors,
-          avg_base_price: marketAvgPrice,
-          avg_star_rating: marketAvgStarRating,
-          avg_guest_rating: marketAvgRating,
+          avg_base_price: Number(marketAvgPrice.toFixed(2)),
+          avg_guest_rating: Number(marketAvgRating.toFixed(1)),
+          avg_occupancy_rate: Number(marketAvgOccupancy.toFixed(1)),
         },
-        comparison: {
+        differences: {
           price_difference_percentage: priceDiffPercent,
+          price_difference_amount: Number((myAvgPrice - marketAvgPrice).toFixed(2)),
           rating_difference: ratingDiff,
-          recommendation,
+          occupancy_difference: occupancyDiff,
         },
+        insights: [priceInsights, occInsights, ratInsights],
       },
     });
   } catch (error) {
     next(error);
   }
-};
+};;
 
 
 export const updateHotelCurrency = async (req, res, next) => {

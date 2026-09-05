@@ -306,9 +306,7 @@ export const createBooking = async (req, res, next) => {
     }
 
     // Award Loyalty Points Immediately
-    const config = await LoyaltyConfig.findOne({ transaction });
-    const pointsPerCurrency = config ? Number(config.points_per_currency) : 10;
-    const pointsEarned = Math.round(Number(total_price) * pointsPerCurrency);
+    const pointsEarned = Math.floor(Number(total_price) / 1000) * 100;
 
     if (pointsEarned > 0) {
       const existingTx = await LoyaltyTransaction.findOne({
