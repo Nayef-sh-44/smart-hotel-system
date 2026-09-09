@@ -113,56 +113,28 @@ export default function HotelDetail() {
   const [nearbyPlaces, setNearbyPlaces] = useState([]);
   const [isFetchingPlaces, setIsFetchingPlaces] = useState(false);
   const [mapFilter, setMapFilter] = useState('all');
+  const [tripType, setTripType] = useState(searchParams.get('trip_type') || 'family');
 
-  const fetchNearbyPlaces = async (lat, lon) => {
+  const fetchNearbyPlaces = async (type) => {
     setIsFetchingPlaces(true);
     setNearbyPlaces([]);
     try {
-      const overpassQuery = `[out:json][timeout:12];
-      (
-        node["tourism"~"attraction|museum|artwork|viewpoint"](around:2500,${lat},${lon});
-        node["amenity"~"restaurant|cafe|fast_food|hospital|pharmacy|atm|bank"](around:2500,${lat},${lon});
-        node["shop"~"mall|supermarket|department_store"](around:2500,${lat},${lon});
-      );
-      out body 40;`;
-
-      const res = await fetch('https://overpass-api.de/api/interpreter', {
-        method: 'POST',
-        body: overpassQuery
-      });
-      const data = await res.json();
-      
-      if (data && data.elements) {
-        const places = [];
-        data.elements.forEach(node => {
-          if (!node.lat || !node.lon || !node.tags) return;
-          const tags = node.tags;
-          let name = tags.name || tags['name:en'] || '';
-          if (!name) return;
-
-          let category = 'Tourist Attraction';
-          let group = 'attraction';
-          let color = '#6366f1';
-
-          if (tags.tourism === 'museum') { category = 'Museum'; group = 'museum'; color = '#8b5cf6'; }
-          else if (tags.tourism === 'attraction' || tags.tourism === 'viewpoint') { category = 'Tourist Attraction'; group = 'attraction'; color = '#f59e0b'; }
-          else if (tags.amenity === 'restaurant' || tags.amenity === 'fast_food') { category = 'Restaurant'; group = 'restaurant'; color = '#3b82f6'; }
-          else if (tags.amenity === 'cafe') { category = 'Cafe'; group = 'restaurant'; color = '#d97706'; }
-          else if (tags.amenity === 'hospital' || tags.amenity === 'clinic') { category = 'Hospital'; group = 'hospital'; color = '#ef4444'; }
-          else if (tags.amenity === 'pharmacy') { category = 'Pharmacy'; group = 'hospital'; color = '#ec4899'; }
-          else if (tags.amenity === 'atm' || tags.amenity === 'bank') { category = 'ATM'; group = 'atm'; color = '#10b981'; }
-          else if (tags.shop) { category = 'Shopping'; group = 'shopping'; color = '#06b6d4'; }
-
-          places.push({ id: node.id, name, lat: node.lat, lon: node.lon, category, group, color });
-        });
-        setNearbyPlaces(places);
+      const res = await hotelService.getNearbyServices(id, type);
+      if (res.success && res.data) {
+        setNearbyPlaces(res.data);
       }
     } catch (err) {
-      console.error("Failed to fetch nearby places", err);
+      console.error(err);
     } finally {
       setIsFetchingPlaces(false);
     }
   };
+
+  useEffect(() => {
+    if (hotel?.id) {
+      fetchNearbyPlaces(tripType);
+    }
+  }, [hotel?.id, tripType]);
 
   const fetchHotelDetails = async () => {
     setLoading(true);
@@ -170,9 +142,6 @@ export default function HotelDetail() {
       const res = await hotelService.getById(id);
       if (res.success) {
         setHotel(res.data);
-        if (res.data.latitude && res.data.longitude) {
-          fetchNearbyPlaces(res.data.latitude, res.data.longitude);
-        }
       }
       const revRes = await reviewService.getByHotel(id);
       if (revRes.success) {
@@ -639,43 +608,50 @@ export default function HotelDetail() {
             </div>
           </div>
 
-          {/* Nearby Services */}
+          {/* Nearby Services Component */}
           <div className="glass-panel p-6">
-            <h4 className="text-base font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-              <Navigation className="w-4 h-4 text-brand-400" />
-              <span>Nearby Services</span>
+            <h4 className="text-base font-bold text-slate-900 dark:text-white mb-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Navigation className="w-4 h-4 text-brand-400" />
+                <span>Nearby Services</span>
+              </div>
             </h4>
-            {hotel.nearbyServices && hotel.nearbyServices.length > 0 ? (
-              <div className="space-y-3">
-                {hotel.nearbyServices.map((ns) => (
-                  <div key={ns.id} className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-300">
-                    <span className="font-medium truncate">{ns.service_name}</span>
-                    <span className="text-slate-400">{ns.distance_km} km</span>
+            
+            <div className="mb-4 space-y-2">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Trip Type:</label>
+              <div className="flex flex-wrap gap-1.5">
+                {['family', 'business', 'couple', 'solo'].map(t => (
+                  <button 
+                    key={t}
+                    type="button" 
+                    onClick={() => setTripType(t)} 
+                    className={`px-2.5 py-1 text-[10px] uppercase tracking-wider font-bold rounded border ${tripType === t ? 'bg-brand-600 text-white border-brand-500' : 'bg-slate-50 text-slate-600 border-slate-300 hover:bg-slate-100 dark:bg-dark-950/60 dark:text-slate-400 dark:border-slate-700'}`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {isFetchingPlaces ? (
+              <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 py-4">
+                <Loader2 className="w-4 h-4 animate-spin text-brand-500" />
+                <span>Loading nearby services...</span>
+              </div>
+            ) : nearbyPlaces.length > 0 ? (
+              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                {nearbyPlaces.map(place => (
+                  <div key={place.id} className="p-3 border border-slate-200 dark:border-slate-800 rounded-lg flex flex-col gap-1 hover:border-brand-300 transition-colors bg-slate-50 dark:bg-dark-950/50">
+                    <div className="font-bold text-sm text-slate-800 dark:text-slate-200 truncate">{place.name}</div>
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="px-2 py-0.5 rounded text-white font-semibold text-[10px]" style={{backgroundColor: place.color || '#6366f1'}}>{place.displayCategory || place.category}</span>
+                      <span className="text-slate-500 font-medium">{place.distanceKm?.toFixed(2)} km</span>
+                    </div>
                   </div>
                 ))}
               </div>
             ) : (
               <p className="text-xs text-slate-500 dark:text-slate-400">No nearby services listed.</p>
-            )}
-          </div>
-
-          {/* Tourist Attractions */}
-          <div className="glass-panel p-6">
-            <h4 className="text-base font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-              <Compass className="w-4 h-4 text-accent-500" />
-              <span>Attractions & Landmarks</span>
-            </h4>
-            {hotel.attractions && hotel.attractions.length > 0 ? (
-              <div className="space-y-3">
-                {hotel.attractions.map((ta) => (
-                  <div key={ta.id} className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-300">
-                    <span className="font-medium truncate">{ta.attraction_name}</span>
-                    <span className="text-slate-400">{ta.distance_km} km</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-slate-500 dark:text-slate-400">No landmarks listed.</p>
             )}
           </div>
         </div>
@@ -685,31 +661,6 @@ export default function HotelDetail() {
       {hotel.latitude && hotel.longitude && (
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 mb-12">
           <div className="glass-panel p-6 sm:p-8">
-            <div className="flex flex-col gap-4 mb-4">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800/80">
-                <div className="flex items-center gap-2">
-                  <MapLucide className="w-6 h-6 text-emerald-400" />
-                  <h3 className="text-xl font-bold text-slate-900 dark:text-white">Location & Nearby Places</h3>
-                </div>
-              </div>
-              
-              <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={() => setMapFilter('all')} className={`px-3 py-1 text-xs rounded-full border ${mapFilter === 'all' ? 'bg-brand-600 text-white border-brand-500' : 'bg-slate-50 text-slate-600 border-slate-300 hover:bg-slate-100 hover:text-slate-900 dark:bg-dark-950/60 dark:text-slate-400 dark:border-slate-700 dark:hover:text-white'}`}>All Places</button>
-                <button type="button" onClick={() => setMapFilter('attraction')} className={`px-3 py-1 text-xs rounded-full border ${mapFilter === 'attraction' ? 'bg-amber-500 text-white border-amber-400' : 'bg-slate-50 text-slate-600 border-slate-300 hover:bg-slate-100 hover:text-slate-900 dark:bg-dark-950/60 dark:text-slate-400 dark:border-slate-700 dark:hover:text-white'}`}>Attractions</button>
-                <button type="button" onClick={() => setMapFilter('restaurant')} className={`px-3 py-1 text-xs rounded-full border ${mapFilter === 'restaurant' ? 'bg-blue-500 text-white border-blue-400' : 'bg-slate-50 text-slate-600 border-slate-300 hover:bg-slate-100 hover:text-slate-900 dark:bg-dark-950/60 dark:text-slate-400 dark:border-slate-700 dark:hover:text-white'}`}>Dining & Cafes</button>
-                <button type="button" onClick={() => setMapFilter('shopping')} className={`px-3 py-1 text-xs rounded-full border ${mapFilter === 'shopping' ? 'bg-cyan-500 text-white border-cyan-400' : 'bg-slate-50 text-slate-600 border-slate-300 hover:bg-slate-100 hover:text-slate-900 dark:bg-dark-950/60 dark:text-slate-400 dark:border-slate-700 dark:hover:text-white'}`}>Shopping</button>
-                <button type="button" onClick={() => setMapFilter('hospital')} className={`px-3 py-1 text-xs rounded-full border ${mapFilter === 'hospital' ? 'bg-red-500 text-white border-red-400' : 'bg-slate-50 text-slate-600 border-slate-300 hover:bg-slate-100 hover:text-slate-900 dark:bg-dark-950/60 dark:text-slate-400 dark:border-slate-700 dark:hover:text-white'}`}>Health</button>
-                <button type="button" onClick={() => setMapFilter('atm')} className={`px-3 py-1 text-xs rounded-full border ${mapFilter === 'atm' ? 'bg-emerald-500 text-white border-emerald-400' : 'bg-slate-50 text-slate-600 border-slate-300 hover:bg-slate-100 hover:text-slate-900 dark:bg-dark-950/60 dark:text-slate-400 dark:border-slate-700 dark:hover:text-white'}`}>ATM & Banks</button>
-              </div>
-
-              {isFetchingPlaces && (
-                <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                  <Loader2 className="w-4 h-4 animate-spin text-brand-500" />
-                  <span>Fetching real-time OpenStreetMap / Overpass API surrounding attractions...</span>
-                </div>
-              )}
-            </div>
-            
             <div style={{ height: '500px', width: '100%', borderRadius: '8px', overflow: 'hidden' }}>
               <MapContainer 
                 center={[hotel.latitude, hotel.longitude]} 
@@ -735,17 +686,17 @@ export default function HotelDetail() {
                   </Popup>
                 </Marker>
 
-                {nearbyPlaces.filter(p => mapFilter === 'all' || p.group === mapFilter).map((place) => {
-                  const dist = getDistanceFromLatLonInKm(hotel.latitude, hotel.longitude, place.lat, place.lon);
+                {nearbyPlaces.map((place) => {
+                  const dist = place.distanceKm || 0;
                   return (
                     <CircleMarker
                       key={`poi-${place.id}`}
-                      center={[place.lat, place.lon]}
+                      center={[place.latitude, place.longitude]}
                       radius={7}
                       pathOptions={{
                         color: '#ffffff',
                         weight: 2,
-                        fillColor: place.color,
+                        fillColor: place.color || '#6366f1',
                         fillOpacity: 0.9,
                       }}
                     >
@@ -753,7 +704,7 @@ export default function HotelDetail() {
                         <div className="text-slate-800 font-sans p-1 min-w-[160px]">
                           <h3 className="font-bold text-sm mb-1" style={{color: '#1e3a8a'}}>{place.name}</h3>
                           <div className="mt-1 text-xs text-slate-600 space-y-1">
-                            <div><strong>Category:</strong> <span className="px-2 py-0.5 rounded text-white font-semibold text-[10px]" style={{backgroundColor: place.color}}>{place.category}</span></div>
+                            <div><strong>Category:</strong> <span className="px-2 py-0.5 rounded text-white font-semibold text-[10px]" style={{backgroundColor: place.color || '#6366f1'}}>{place.displayCategory || place.category}</span></div>
                             <div><strong>Distance:</strong> {dist.toFixed(2)} km</div>
                           </div>
                         </div>

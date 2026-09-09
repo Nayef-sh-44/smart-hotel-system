@@ -51,11 +51,11 @@ export default function Navbar() {
             <div className="w-11 h-11 rounded-2xl bg-brand-600 dark:bg-gradient-to-tr dark:from-brand-600 dark:to-accent-500 flex items-center justify-center shadow-md dark:shadow-lg dark:shadow-brand-600/30 group-hover:shadow-lg dark:group-hover:shadow-brand-500/50 transition-all duration-300">
               <Hotel className="w-6 h-6 text-white" />
             </div>
-            <div>
-              <span className="text-xl font-bold text-slate-900 dark:text-transparent dark:bg-gradient-to-r dark:from-white dark:via-slate-200 dark:to-brand-400 dark:bg-clip-text">
-                SmartHotel Pro
-              </span>
-              <span className="block text-[10px] uppercase tracking-widest text-brand-600 dark:text-brand-400 font-semibold">
+              <div>
+                <span className="text-xl font-bold text-slate-900 dark:text-transparent dark:bg-gradient-to-r dark:from-white dark:via-slate-200 dark:to-brand-400 dark:bg-clip-text">
+                  HotelLink: تطبيق هوتلَ لينك لتنظيم عروض الفنادق و الرحلات
+                </span>
+                <span className="block text-[10px] uppercase tracking-widest text-brand-600 dark:text-brand-400 font-semibold">
                 AI Luxury Suite
               </span>
             </div>

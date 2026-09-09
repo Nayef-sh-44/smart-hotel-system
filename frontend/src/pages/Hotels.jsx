@@ -405,7 +405,7 @@ export default function Hotels() {
                       <Sparkles className="w-3 h-3" />
                       <span>{Math.min(99, item.recommendationScore)}% Match</span>
                     </div>
-                    <HotelCard hotel={item.hotel} isFavoriteInitial={userFavorites.includes(item.hotel.id)} />
+                    <HotelCard tripType={tripType} hotel={item.hotel} isFavoriteInitial={userFavorites.includes(item.hotel.id)} />
                     <div className="mt-2 text-[11px] text-slate-600 dark:text-slate-400 flex items-center gap-1.5 px-2">
                       <Award className="w-3 h-3 text-amber-500 dark:text-amber-400 shrink-0" />
                       <span className="truncate">{item.matchReasons[0]}</span>
@@ -470,7 +470,7 @@ export default function Hotels() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {hotels.map((hotel) => (
-                <HotelCard key={`all-${hotel.id}`} hotel={hotel} isFavoriteInitial={userFavorites.includes(hotel.id)} />
+                <HotelCard tripType={tripType} key={`all-${hotel.id}`} hotel={hotel} isFavoriteInitial={userFavorites.includes(hotel.id)} />
               ))}
             </div>
             )}

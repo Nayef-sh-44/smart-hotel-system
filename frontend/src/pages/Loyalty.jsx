@@ -90,7 +90,7 @@ export default function Loyalty() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-500/10 border border-brand-500/30 text-brand-400 text-xs font-semibold mb-2">
             <Award className="w-3.5 h-3.5" />
-            <span>SmartHotel Rewards Club</span>
+            <span>HotelLink: تطبيق هوتلَ لينك لتنظيم عروض الفنادق و الرحلات Rewards Club</span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white">
             My Hotel Loyalty Balances

@@ -25,9 +25,28 @@ export const getAllHotels = async (req, res, next) => {
       max_price,
       amenities,
       sort = 'recommended',
+      guests,
+      rooms,
     } = req.query;
 
     const whereClause = {};
+    const roomWhere = {};
+
+    if (guests && rooms) {
+      roomWhere.capacity = { [Op.gte]: Math.ceil(Number(guests) / Number(rooms)) };
+    } else if (guests) {
+      roomWhere.capacity = { [Op.gte]: Number(guests) };
+    }
+
+    const userCurrency = req.query.user_currency || 'USD';
+    const minPriceUsd = min_price ? (userCurrency === 'EUR' ? Number(min_price) * 1.10 : Number(min_price)) : null;
+    const maxPriceUsd = max_price ? (userCurrency === 'EUR' ? Number(max_price) * 1.10 : Number(max_price)) : null;
+
+    if (minPriceUsd !== null || maxPriceUsd !== null) {
+      roomWhere.price_per_night = {};
+      if (minPriceUsd !== null) roomWhere.price_per_night[Op.gte] = minPriceUsd;
+      if (maxPriceUsd !== null) roomWhere.price_per_night[Op.lte] = maxPriceUsd;
+    }
 
     if (city_id) {
       whereClause.city_id = Number(city_id);
@@ -39,19 +58,7 @@ export const getAllHotels = async (req, res, next) => {
       };
     }
 
-    if (min_price || max_price) {
-      const userCurrency = req.query.user_currency || 'USD';
-      const minPriceUsd = min_price ? (userCurrency === 'EUR' ? Number(min_price) * 1.10 : Number(min_price)) : null;
-      const maxPriceUsd = max_price ? (userCurrency === 'EUR' ? Number(max_price) * 1.10 : Number(max_price)) : null;
 
-      whereClause.base_price_per_night = {};
-      if (minPriceUsd !== null) {
-        whereClause.base_price_per_night[Op.gte] = minPriceUsd;
-      }
-      if (maxPriceUsd !== null) {
-        whereClause.base_price_per_night[Op.lte] = maxPriceUsd;
-      }
-    }
 
     if (q) {
       whereClause[Op.or] = [
@@ -62,11 +69,11 @@ export const getAllHotels = async (req, res, next) => {
     }
 
     // Sorting options
-    let orderClause = [['star_rating', 'DESC'], ['base_price_per_night', 'ASC']];
+    let orderClause = [['star_rating', 'DESC'], [{ model: Room, as: 'rooms' }, 'price_per_night', 'ASC']];
     if (sort === 'price_asc') {
-      orderClause = [['base_price_per_night', 'ASC']];
+      orderClause = [[{ model: Room, as: 'rooms' }, 'price_per_night', 'ASC']];
     } else if (sort === 'price_desc') {
-      orderClause = [['base_price_per_night', 'DESC']];
+      orderClause = [[{ model: Room, as: 'rooms' }, 'price_per_night', 'DESC']];
     } else if (sort === 'rating_desc') {
       orderClause = [['star_rating', 'DESC']];
     } else if (sort === 'name_asc') {
@@ -90,12 +97,24 @@ export const getAllHotels = async (req, res, next) => {
         model: Room,
         as: 'rooms',
         attributes: ['id', 'room_type', 'price_per_night', 'capacity', 'available_rooms', 'is_available'],
+        where: roomWhere,
+        required: Object.keys(roomWhere).length > 0,
       },
       {
         model: FlashDeal,
         as: 'flashDeals',
         where: { active_status: true },
         required: false,
+      },
+      {
+        model: DynamicPricingRule,
+        as: 'pricingRules',
+        where: { is_active: true },
+        required: false,
+      },
+      {
+        model: HotelImage,
+        as: 'images',
       },
     ];
 
@@ -114,11 +133,40 @@ export const getAllHotels = async (req, res, next) => {
       });
     }
 
-    res.status(200).json({
-      success: true,
-      count: hotels.length,
-      data: hotels,
-    });
+      // Calculate dynamic starting price for each hotel based on its filtered rooms
+      const checkInDate = req.query.check_in_date ? new Date(req.query.check_in_date) : new Date();
+      const checkOutDate = req.query.check_out_date ? new Date(req.query.check_out_date) : new Date(checkInDate.getTime() + 86400000);
+      const reqNumRooms = Number(req.query.rooms || 1);
+
+      const hotelsWithPrice = hotels.map((h) => {
+        const hotelObj = h.toJSON();
+        if (hotelObj.rooms && hotelObj.rooms.length > 0) {
+          const minRoomPrice = Math.min(...hotelObj.rooms.map(r => Number(r.price_per_night)));
+          try {
+            const pricingData = calculatePricing(
+              checkInDate,
+              checkOutDate,
+              minRoomPrice,
+              hotelObj.pricingRules,
+              reqNumRooms,
+              hotelObj.city?.country || '',
+              hotelObj.flashDeals
+            );
+            hotelObj.starting_price = pricingData.totalPrice / Math.max(1, (checkOutDate - checkInDate) / 86400000) / reqNumRooms;
+          } catch (e) {
+            hotelObj.starting_price = minRoomPrice;
+          }
+        } else {
+          hotelObj.starting_price = null;
+        }
+        return hotelObj;
+      });
+
+      res.status(200).json({
+        success: true,
+        count: hotelsWithPrice.length,
+        data: hotelsWithPrice,
+      });
   } catch (error) {
     next(error);
   }
@@ -175,13 +223,7 @@ export const getHotelById = async (req, res, next) => {
           where: { is_active: true },
           required: false,
         },
-        {
-          model: FlashDeal,
-          as: 'flashDeals',
-          where: { active_status: true },
-          required: false,
-        },
-      ],
+        { model: FlashDeal, as: 'flashDeals', where: { active_status: true }, required: false }, { model: DynamicPricingRule, as: 'pricingRules', where: { is_active: true }, required: false } ],
     });
 
     if (!hotel) {
@@ -280,18 +322,16 @@ export const getNearbyServices = async (req, res, next) => {
     const lat = hotel.latitude;
     const lon = hotel.longitude;
 
-    const overpassQuery = `[out:json][timeout:30];
+    const overpassQuery = `[out:json][timeout:25];
     (
       nwr["amenity"~"atm|bank|restaurant|fast_food|cafe|bar|pub|hospital|clinic|doctors|pharmacy|dentist|bus_station|cinema|theatre|place_of_worship"](around:3000,${lat},${lon});
-      nwr["shop"](around:3000,${lat},${lon});
+      nwr["shop"~"supermarket|convenience|mall|department_store|clothes|shoes|electronics|gift|toys|books|bakery"](around:3000,${lat},${lon});
       nwr["leisure"~"park|playground|water_park|swimming_pool|stadium|sports_centre|garden"](around:3000,${lat},${lon});
-      nwr["tourism"~"theme_park|zoo|attraction|museum|gallery|aquarium|viewpoint|hotel"](around:3000,${lat},${lon});
-      nwr["public_transport"](around:3000,${lat},${lon});
-      nwr["railway"~"station|halt"](around:3000,${lat},${lon});
-      nwr["aeroway"~"aerodrome"](around:3000,${lat},${lon});
+      nwr["tourism"~"theme_park|zoo|attraction|museum|gallery|aquarium|viewpoint"](around:3000,${lat},${lon});
       nwr["highway"~"bus_stop"](around:3000,${lat},${lon});
+      nwr["railway"~"station|halt"](around:3000,${lat},${lon});
     );
-    out center;`;
+    out center qt;`;
 
     let fetchRes;
     const endpoints = [
@@ -304,7 +344,7 @@ export const getNearbyServices = async (req, res, next) => {
       try {
         
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2000);
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
         fetchRes = await fetch(ep, {
           method: 'POST',
           headers: {
@@ -407,6 +447,39 @@ export const getNearbyServices = async (req, res, next) => {
         }
       });
     }
+
+    const { trip_type } = req.query;
+      
+    // Sort logic based on Trip Type priority
+    places.sort((a, b) => {
+      let scoreA = 0;
+      let scoreB = 0;
+      
+      const tt = (trip_type || '').toLowerCase();
+      
+      const getScore = (p) => {
+        let s = 0;
+        if (tt === 'family') {
+          if (['park', 'theme_park', 'zoo', 'aquarium', 'playground'].includes(p.category)) s += 50;
+          if (['restaurant', 'fast_food', 'supermarket'].includes(p.category)) s += 20;
+        } else if (tt === 'business') {
+          if (['transport', 'bank', 'atm', 'cafe'].includes(p.category)) s += 50;
+        } else if (tt === 'couple') {
+          if (['restaurant', 'cafe', 'attraction', 'museum', 'gallery', 'park'].includes(p.category)) s += 50;
+        } else if (tt === 'solo') {
+          if (['cafe', 'attraction', 'museum', 'transport', 'supermarket'].includes(p.category)) s += 50;
+        }
+        
+        // ATM remains relevant (small boost)
+        if (p.category === 'atm') s += 10;
+        
+        // Distance penalty
+        s -= p.distanceKm * 5;
+        return s;
+      };
+
+      return getScore(b) - getScore(a);
+    });
 
     res.status(200).json({
       success: true,

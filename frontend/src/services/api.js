@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+export const API_BASE_URL = import.meta.env.PROD ? '/api' : (import.meta.env.VITE_API_URL || 'http://localhost:5000/api');
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -49,7 +49,7 @@ export const authService = {
 export const hotelService = {
   getAll: (params) => api.get('/hotels', { params }),
   getById: (id) => api.get(`/hotels/${id}`),
-  getNearbyServices: (id) => api.get(`/hotels/${id}/nearby-services`),
+  getNearbyServices: (id, trip_type) => api.get(`/hotels/${id}/nearby-services`, { params: { trip_type } }),
   getPricePreview: (id, params) => api.get(`/hotels/${id}/price-preview`, { params }),
 };
 

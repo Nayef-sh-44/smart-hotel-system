@@ -47,7 +47,7 @@ const getAmenityIcon = (name) => {
   return CheckCircle;
 };
 
-export default function HotelCard({ hotel, isFavoriteInitial = false, onFavoriteToggle }) {
+export default function HotelCard({ hotel, tripType = 'family', isFavoriteInitial = false, onFavoriteToggle }) {
   const { toggleComparison, isSelected } = useComparison();
   const { isAuthenticated } = useAuth();
   const { symbol, formatPrice } = useCurrency();
@@ -176,7 +176,7 @@ export default function HotelCard({ hotel, isFavoriteInitial = false, onFavorite
           </span>
         </div>
 
-        <Link to={`/hotels/${hotel.id}`} className="group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
+        <Link to={`/hotels/${hotel.id}?trip_type=${tripType}`} className="group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
           <h3 className="text-lg font-bold text-slate-900 dark:text-white line-clamp-1 mb-2">{hotel.name}</h3>
         </Link>
 
@@ -230,14 +230,16 @@ export default function HotelCard({ hotel, isFavoriteInitial = false, onFavorite
             </span>
             <div className="flex items-baseline gap-1">
               <span className="text-xl font-bold text-slate-900 dark:text-white">
-                {symbol}{formatPrice(hotel.base_price_per_night || 199)}
+                {hotel.starting_price !== null && hotel.starting_price !== undefined
+                  ? `${symbol}${formatPrice(hotel.starting_price)}` 
+                  : 'N/A'}
               </span>
               <span className="text-xs text-slate-500 dark:text-slate-400">/ night</span>
             </div>
           </div>
 
           <Link
-            to={`/hotels/${hotel.id}`}
+            to={`/hotels/${hotel.id}?trip_type=${tripType}`}
             className="px-4 py-2 rounded-xl bg-brand-50 hover:bg-brand-100 text-brand-700 border border-brand-200 dark:bg-brand-600/20 dark:hover:bg-brand-600 dark:text-brand-400 dark:hover:text-white dark:border-brand-500/30 text-xs font-semibold transition-all flex items-center gap-1.5"
           >
             <span>View Suite</span>

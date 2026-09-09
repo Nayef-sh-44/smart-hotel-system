@@ -180,7 +180,7 @@ export default function TripPlan() {
     // Header
     doc.setFontSize(24);
     doc.setTextColor(30, 58, 138); 
-    doc.text('SmartHotel Pro', pageWidth / 2, yPos, { align: 'center' });
+    doc.text('HotelLink: تطبيق هوتلَ لينك لتنظيم عروض الفنادق و الرحلات', pageWidth / 2, yPos, { align: 'center' });
     yPos += 10;
     
     doc.setFontSize(14);
@@ -363,7 +363,7 @@ export default function TripPlan() {
     doc.text(`GRAND TOTAL: ${symbol}${convertFromUSD(grandTotal, userCurrency).toFixed(2)}`, 14, yPos);
     
     const safeName = (tripPlan.name || 'Trip').replace(/[^a-z0-9]/gi, '-').toLowerCase();
-    doc.save(`SmartHotel-Trip-Report-${safeName}.pdf`);
+    doc.save(`HotelLink-Trip-Report-${safeName}.pdf`);
   };
 
   if (!tripPlan.destinations || tripPlan.destinations.length === 0) {

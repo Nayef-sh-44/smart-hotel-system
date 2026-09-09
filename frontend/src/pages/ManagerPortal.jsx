@@ -398,19 +398,7 @@ export default function ManagerPortal({ defaultTab = 'hotel' }) {
                       className="input-field text-xs"
                     />
                   </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Base Price / Night (€)
-                    </label>
-                    <input
-                      type="number"
-                      value={myHotel.base_price_per_night || ''}
-                      onChange={(e) =>
-                        setMyHotel({ ...myHotel, base_price_per_night: e.target.value })
-                      }
-                      className="input-field text-xs"
-                    />
-                  </div>
+                  
                 </div>
 
                 <div className="mt-6">

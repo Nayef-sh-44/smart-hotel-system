@@ -60,7 +60,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('token', res.data.token);
         localStorage.setItem('user', JSON.stringify(res.data.user));
         setUser(res.data.user);
-        toast.success(`Welcome to SmartHotel Pro, ${res.data.user.full_name}!`);
+        toast.success(`Welcome to HotelLink: تطبيق هوتلَ لينك لتنظيم عروض الفنادق و الرحلات, ${res.data.user.full_name}!`);
         return { success: true, role: res.data.user.role };
       }
     } catch (err) {

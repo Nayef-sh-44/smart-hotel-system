@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "docx": "^9.7.1",
     "puppeteer": "^25.9.0",
     "puppeteer-core": "^25.7.0",
     "sequelize": "^6.37.8",

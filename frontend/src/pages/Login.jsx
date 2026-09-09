@@ -82,7 +82,7 @@ export default function Login() {
               </div>
               <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white">Welcome Back</h2>
               <p className="text-xs text-slate-400 mt-1">
-                Sign in to your SmartHotel Pro luxury account
+                Sign in to your HotelLink: تطبيق هوتلَ لينك لتنظيم عروض الفنادق و الرحلات luxury account
               </p>
             </div>
 

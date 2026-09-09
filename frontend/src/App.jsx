@@ -123,7 +123,7 @@ function AppContent() {
       {/* Footer */}
       <footer className="border-t border-slate-200 py-8 bg-slate-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-4">
-          <span>Ac {new Date().getFullYear()} SmartHotel Pro. All rights reserved.</span>
+          <span>&copy; {new Date().getFullYear()} HotelLink: تطبيق هوتلَ لينك لتنظيم عروض الفنادق و الرحلات. All rights reserved.</span>
           <span className="flex items-center gap-2">
             <span>Powered by React 19, Vite & Node.js</span>
           </span>

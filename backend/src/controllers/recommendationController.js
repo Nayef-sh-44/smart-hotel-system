@@ -6,7 +6,8 @@ import {
   Review,
   DynamicPricingRule,
   FlashDeal,
-  Favorite
+  Favorite,
+  HotelImage
 } from '../models/index.js';
 
 export const getRecommendations = async (req, res, next) => {
@@ -46,7 +47,8 @@ export const getRecommendations = async (req, res, next) => {
         { model: Room, as: 'rooms' },
         { model: Review, as: 'reviews', where: { is_approved: true }, required: false },
         { model: DynamicPricingRule, as: 'pricingRules', where: { is_active: true }, required: false },
-        { model: FlashDeal, as: 'flashDeals', where: { active_status: true }, required: false }
+        { model: FlashDeal, as: 'flashDeals', where: { active_status: true }, required: false },
+        { model: HotelImage, as: 'images' }
       ]
     });
 

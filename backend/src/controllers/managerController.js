@@ -411,7 +411,9 @@ export const getCompetitorBenchmarking = async (req, res, next) => {
     const myOccupancy = myTotalRooms > 0 
       ? Math.min(100, (myTotalBookedNights / (myTotalRooms * 30)) * 100) 
       : 0;
-    const myAvgPrice = Number(myHotel.base_price_per_night);
+    const myAvgPrice = myHotel.rooms && myHotel.rooms.length > 0
+      ? myHotel.rooms.reduce((sum, r) => sum + Number(r.price_per_night), 0) / myHotel.rooms.length
+      : Number(myHotel.base_price_per_night || 0);
 
     // Competitors
     const competitorHotels = await Hotel.findAll({
@@ -434,12 +436,23 @@ export const getCompetitorBenchmarking = async (req, res, next) => {
 
     if (totalCompetitors > 0) {
       // Market Price
-      marketAvgPrice = Number(
-        (
-          otherHotels.reduce((sum, h) => sum + Number(h.base_price_per_night || 0), 0) /
-          totalCompetitors
-        ).toFixed(2)
-      );
+      let totalMarketPrice = 0;
+      let totalMarketRooms = 0;
+      otherHotels.forEach(h => {
+        if (h.rooms && h.rooms.length > 0) {
+          h.rooms.forEach(r => {
+            totalMarketPrice += Number(r.price_per_night);
+            totalMarketRooms++;
+          });
+        } else if (h.base_price_per_night) {
+          totalMarketPrice += Number(h.base_price_per_night);
+          totalMarketRooms++;
+        }
+      });
+      
+      marketAvgPrice = totalMarketRooms > 0 
+        ? Number((totalMarketPrice / totalMarketRooms).toFixed(2))
+        : 0;
 
       // Market Rating
       let totalReviewsCount = 0;
