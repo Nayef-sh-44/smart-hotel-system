@@ -20,20 +20,7 @@ export const calculatePricing = (checkInDateRaw, checkOutDateRaw, baseRoomPrice,
   let currentDate = new Date(Date.UTC(checkInDate.getUTCFullYear(), checkInDate.getUTCMonth(), checkInDate.getUTCDate()));
   const endDate = new Date(Date.UTC(checkOutDate.getUTCFullYear(), checkOutDate.getUTCMonth(), checkOutDate.getUTCDate()));
 
-  const now = new Date();
-  let activeDeal = null;
-  if (flashDeals && flashDeals.length > 0) {
-    for (const deal of flashDeals) {
-      if (deal.active_status) {
-        const start = new Date(deal.start_datetime);
-        const end = new Date(deal.end_datetime);
-        if (now >= start && now <= end) {
-          activeDeal = deal;
-          break;
-        }
-      }
-    }
-  }
+  let activeDeal = null; // Track if any deal was applied to at least one night
 
   const getSeason = (date, countryName) => {
     const month = date.getUTCMonth() + 1;
@@ -69,11 +56,26 @@ export const calculatePricing = (checkInDateRaw, checkOutDateRaw, baseRoomPrice,
     let nightlyBase = baseRoomPrice * dailyMultiplier * Number(numRooms);
     let nightlyFinal = nightlyBase;
 
-    if (activeDeal) {
-      if (activeDeal.discount_type === 'percentage') {
-        nightlyFinal -= nightlyFinal * (Number(activeDeal.discount_percentage) / 100);
+    let nightDeal = null;
+    if (flashDeals && flashDeals.length > 0) {
+      for (const deal of flashDeals) {
+        if (deal.active_status) {
+          const start = new Date(deal.start_datetime);
+          const end = new Date(deal.end_datetime);
+          if (currentDate >= start && currentDate <= end) {
+            nightDeal = deal;
+            if (!activeDeal) activeDeal = deal;
+            break;
+          }
+        }
+      }
+    }
+
+    if (nightDeal) {
+      if (nightDeal.discount_type === 'percentage') {
+        nightlyFinal -= nightlyFinal * (Number(nightDeal.discount_percentage) / 100);
       } else {
-        nightlyFinal -= (Number(activeDeal.discount_value) * Number(numRooms));
+        nightlyFinal -= (Number(nightDeal.discount_value) * Number(numRooms));
       }
       nightlyFinal = Math.max(0, nightlyFinal);
     }

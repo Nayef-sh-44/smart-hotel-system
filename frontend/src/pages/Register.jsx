@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Link, useNavigate } from 'react-router-dom';
-import { Hotel, User, Mail, Lock, Phone, ArrowRight, ShieldQuestion } from 'lucide-react';
+import { Hotel, User, Mail, Lock, Phone, ArrowRight, ShieldQuestion, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const SECURITY_QUESTIONS = [
@@ -14,6 +14,7 @@ const SECURITY_QUESTIONS = [
 export default function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     full_name: '',
     email: '',
@@ -85,7 +86,10 @@ export default function Register() {
             <label className="block text-xs font-semibold text-slate-300 mb-1">Password (min 6 characters)</label>
             <div className="relative">
               <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input type="password" name="password" required minLength="6" value={formData.password} onChange={handleChange} placeholder="••••••••" className="input-field pl-10 text-sm" />
+              <input type={showPassword ? 'text' : 'password'} name="password" required minLength="6" value={formData.password} onChange={handleChange} placeholder="••••••••" className="input-field pl-10 pr-10 text-sm" />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none">
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
             </div>
           </div>
 

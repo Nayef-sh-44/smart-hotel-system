@@ -1,3 +1,4 @@
+import { calculatePricing } from '../services/pricingService.js';
 import {
   Hotel,
   City,
@@ -62,118 +63,103 @@ export const getRecommendations = async (req, res, next) => {
       include: [{ model: Hotel, as: 'hotel', attributes: ['id', 'city_id'] }]
     }) : [];
 
-    const calculateFavoritePreference = (hotel, userFavorites, searchRegionId) => {
-      let favoriteScore = 0;
-      let isFavorite = false;
-      
-      if (!userFavorites || userFavorites.length === 0) {
-        return { favoriteScore, isFavorite };
-      }
-
-      const hotelRegion = hotel.city_id;
-      
-      // Condition 1: Only consider favorites in the searchRegion
-      const regionalFavorites = userFavorites.filter(fav => fav.hotel && fav.hotel.city_id === searchRegionId);
-
-      // Only apply favorite logic if the hotel belongs to the search region
-      if (hotelRegion === searchRegionId && regionalFavorites.length > 0) {
-        // Condition 2: Is the hotel itself a favorite?
-        isFavorite = regionalFavorites.some(fav => fav.hotel_id === hotel.id);
-        if (isFavorite) {
-          favoriteScore += 15; // Moderate boost
-        }
-        
-        // Condition 3: Pattern preference in the region
-        if (regionalFavorites.length === 1) {
-          favoriteScore += 3;
-        } else if (regionalFavorites.length >= 2) {
-          favoriteScore += Math.min(8, regionalFavorites.length * 2);
-        }
-      }
-
-      return { favoriteScore, isFavorite };
-    };
-
+    
     const scoredHotels = allHotels.map((hotel) => {
-      let score = 0;
+      const hotelObj = hotel.toJSON ? hotel.toJSON() : hotel;
+      if (hotelObj.rooms && hotelObj.rooms.length > 0) {
+        const minRoomPrice = Math.min(...hotelObj.rooms.map(r => Number(r.price_per_night)));
+        try {
+          const reqNumRooms = Number(req.query.rooms || 1);
+          const checkInDate = req.query.check_in_date ? new Date(req.query.check_in_date) : new Date();
+          const checkOutDate = req.query.check_out_date ? new Date(req.query.check_out_date) : new Date(checkInDate.getTime() + 86400000);
+          
+          const pricingData = calculatePricing(
+            checkInDate,
+            checkOutDate,
+            minRoomPrice,
+            hotelObj.pricingRules || [],
+            reqNumRooms,
+            hotelObj.city?.country || '',
+            hotelObj.flashDeals || []
+          );
+          hotelObj.starting_price = pricingData.totalPrice / Math.max(1, (checkOutDate - checkInDate) / 86400000) / reqNumRooms;
+        } catch (e) {
+          hotelObj.starting_price = minRoomPrice;
+        }
+      } else {
+        hotelObj.starting_price = null;
+      }
+
       const matchReasons = [];
       
-      // Determine searchRegion from the currently evaluated hotel (since allHotels is already filtered by search query)
-      const searchRegionId = hotel.city_id;
-      
-      const { favoriteScore, isFavorite } = calculateFavoritePreference(hotel, userFavoritesData, searchRegionId);
-      
-      if (favoriteScore > 0) {
-        score += favoriteScore;
-      }
-      if (isFavorite) {
-        matchReasons.push('One of your Favorite Hotels');
-      }
-
-      // 1. Star Rating
-      const starRating = Number(hotel.star_rating || 0);
-      score += starRating * 15;
-      if (starRating >= 4.5) {
-        matchReasons.push('Luxury 5-star experience');
-      }
-
-      
-
-      // 3. Price Proximity
+      // 1. Budget Alignment (30%)
+      let budgetScore = 100;
       if (targetBudgetUsd) {
         const basePriceUsd = Number(hotel.base_price_per_night || 200);
-        const priceDiff = Math.abs(basePriceUsd - targetBudgetUsd);
-        const priceScore = Math.max(0, 50 - (priceDiff / targetBudgetUsd) * 30);
-        score += priceScore;
-        if (priceDiff <= targetBudgetUsd * 0.15) {
+        const diffRatio = Math.abs(basePriceUsd - targetBudgetUsd) / targetBudgetUsd;
+        budgetScore = Math.max(0, 100 - (diffRatio * 100));
+        if (budgetScore >= 85) {
           matchReasons.push('Great match for your target budget');
         }
       }
 
-      // 4. Amenity Overlap Score
-      let amenityScore = 0;
+      // 2. Rating (25%)
+      const starRating = Number(hotel.star_rating || 3);
+      let avgOverall = starRating;
+      let avgLocation = 4.0; // Default location rating
+
+      if (hotel.reviews && hotel.reviews.length > 0) {
+        const sumOverall = hotel.reviews.reduce((acc, r) => acc + Number(r.overall_rating || 5), 0);
+        const sumLocation = hotel.reviews.reduce((acc, r) => acc + Number(r.location_rating || 4), 0);
+        avgOverall = sumOverall / hotel.reviews.length;
+        avgLocation = sumLocation / hotel.reviews.length;
+      }
+
+      const ratingScore = ((starRating + avgOverall) / 2 / 5) * 100;
+      if (ratingScore >= 90) {
+        matchReasons.push('Exceptional guest rating');
+      }
+
+      // 3. Services/Amenities (20%)
+      let servicesScore = 100;
       const hotelAmenityIds = (hotel.amenities || []).map((a) => a.id);
       if (userAmenityIds.length > 0) {
-        userAmenityIds.forEach((id) => {
-          if (hotelAmenityIds.includes(id)) {
-            amenityScore += 12;
-          }
-        });
-        score += amenityScore;
-        if (amenityScore >= 24) {
+        const matched = userAmenityIds.filter(id => hotelAmenityIds.includes(id)).length;
+        servicesScore = (matched / userAmenityIds.length) * 100;
+        if (servicesScore >= 100) {
           matchReasons.push('Includes your preferred amenities');
         }
       } else {
-        score += Math.min(20, hotel.amenities.length * 3);
+        servicesScore = Math.min(100, (hotelAmenityIds.length / 10) * 100);
       }
 
-      // 5. Review Rating Sentiment
-      let avgReviewScore = 0;
-      if (hotel.reviews && hotel.reviews.length > 0) {
-        const sum = hotel.reviews.reduce((acc, r) => acc + Number(r.overall_rating || 5), 0);
-        avgReviewScore = sum / hotel.reviews.length;
-        score += avgReviewScore * 8;
-        if (avgReviewScore >= 4.5) {
-          matchReasons.push('Exceptional guest rating');
-        }
-      } else {
-        score += 32; // Default baseline for unreviewed hotels
+      // 4. Location (15%)
+      const locationScore = (avgLocation / 5) * 100;
+      if (locationScore >= 90) {
+        matchReasons.push('Highly rated location');
       }
 
-      // 6. Active Flash Deals
-      if (hotel.flashDeals && hotel.flashDeals.length > 0) {
-        score += 25;
-        matchReasons.push('Active Flash Deal available');
+      // 5. Favorites (10%)
+      const isFavorite = userFavoritesData.some(fav => fav.hotel_id === hotel.id);
+      const favoritesScore = isFavorite ? 100 : 0;
+      if (isFavorite) {
+        matchReasons.push('One of your Favorite Hotels');
       }
+
+      // Final Weighted Score Calculation
+      const finalScoreRaw = 
+        (budgetScore * 0.30) + 
+        (ratingScore * 0.25) + 
+        (servicesScore * 0.20) + 
+        (locationScore * 0.15) + 
+        (favoritesScore * 0.10);
+
+      const finalScore = Math.round(finalScoreRaw);
       
-      const finalScore = Math.round(score);
-      
-      // 10. Logging / Debug
-      console.log(`[Recommendation DEBUG] hotelId=${hotel.id}, hotelRegion=${hotel.city_id}, searchRegion=${searchRegionId}, isFavorite=${isFavorite}, favoritePreferenceScore=${favoriteScore}, finalRecommendationScore=${finalScore}`);
-
       return {
-        hotel,
+        hotel: hotelObj,
         recommendationScore: finalScore,
+        recommendationMatchPercentage: finalScore, // Expose directly as exactly 0-100
         matchReasons: matchReasons.length > 0 ? matchReasons : ['Recommended for overall quality & comfort'],
       };
     });

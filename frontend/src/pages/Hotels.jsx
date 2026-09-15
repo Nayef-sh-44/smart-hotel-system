@@ -94,7 +94,7 @@ export default function Hotels() {
       setHotels(fetchedHotels);
       
       const hotelIds = fetchedHotels.map(h => h.id);
-      fetchRecommendations(hotelIds);
+        fetchRecommendations(hotelIds);
     } catch (err) {
       console.error('Error fetching hotels:', err);
     } finally {
@@ -118,6 +118,10 @@ export default function Hotels() {
         params.target_price = targetPrice;
         params.user_currency = currency;
       }
+        if (guests) params.guests = guests;
+        if (rooms) params.rooms = rooms;
+        if (checkInDate) params.check_in_date = checkInDate;
+        if (checkOutDate) params.check_out_date = checkOutDate;
       if (selectedAmenities.length > 0) params.amenities = selectedAmenities.join(',');
       if (tripType) params.trip_type = tripType;
 
@@ -403,7 +407,7 @@ export default function Hotels() {
                   <div key={`rec-${item.hotel.id}`} className="relative group">
                     <div className="absolute -top-3 left-4 z-10 px-3 py-1 rounded-full bg-gradient-to-r from-brand-600 to-accent-500 text-white text-[10px] font-bold shadow-lg flex items-center gap-1">
                       <Sparkles className="w-3 h-3" />
-                      <span>{Math.min(99, item.recommendationScore)}% Match</span>
+                      <span>{item.recommendationMatchPercentage || 0}% Match</span>
                     </div>
                     <HotelCard tripType={tripType} hotel={item.hotel} isFavoriteInitial={userFavorites.includes(item.hotel.id)} />
                     <div className="mt-2 text-[11px] text-slate-600 dark:text-slate-400 flex items-center gap-1.5 px-2">

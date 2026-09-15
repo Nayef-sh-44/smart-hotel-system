@@ -111,9 +111,6 @@ export default function AdminPortal() {
               <span>System Administration Suite</span>
             </div>
             <h1 className="text-3xl font-extrabold text-slate-900">Admin Dashboard</h1>
-            <p className="text-sm text-slate-700 mt-1">
-              Real-time KPIs, user role management, and review moderation.
-            </p>
           </div>
           <button
             onClick={logout}

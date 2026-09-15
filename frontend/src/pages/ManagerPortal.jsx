@@ -88,8 +88,8 @@ export default function ManagerPortal({ defaultTab = 'hotel' }) {
   const [dealForm, setDealForm] = useState({
     title: 'Summer Getaway Special',
     discount_percentage: 20,
-    start_date: '2026-08-01',
-    end_date: '2026-09-30',
+    start_datetime: '2026-08-01',
+    end_datetime: '2026-09-30',
   });
 
   const [mapPosition, setMapPosition] = useState(null);
@@ -234,8 +234,8 @@ export default function ManagerPortal({ defaultTab = 'hotel' }) {
       const res = await managerService.createFlashDeal({
         title: dealForm.title,
         discount_percentage: Number(dealForm.discount_percentage),
-        start_date: dealForm.start_date,
-        end_date: dealForm.end_date,
+        start_datetime: dealForm.start_datetime,
+        end_datetime: dealForm.end_datetime,
       });
       if (res.success) {
         toast.success('Flash deal published!');
@@ -648,8 +648,8 @@ export default function ManagerPortal({ defaultTab = 'hotel' }) {
                       </div>
                       <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-2">{fd.title}</h4>
                       <p className="text-xs text-slate-500 dark:text-slate-400">
-                        Valid: {new Date(fd.start_date).toLocaleDateString()} to{' '}
-                        {new Date(fd.end_date).toLocaleDateString()}
+                        Valid: {new Date(fd.start_datetime).toLocaleDateString()} to{' '}
+                        {new Date(fd.end_datetime).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
@@ -892,8 +892,8 @@ export default function ManagerPortal({ defaultTab = 'hotel' }) {
                   </label>
                   <input
                     type="date"
-                    value={dealForm.start_date}
-                    onChange={(e) => setDealForm({ ...dealForm, start_date: e.target.value })}
+                    value={dealForm.start_datetime}
+                    onChange={(e) => setDealForm({ ...dealForm, start_datetime: e.target.value })}
                     className="input-field text-xs"
                     required
                   />
@@ -904,8 +904,8 @@ export default function ManagerPortal({ defaultTab = 'hotel' }) {
                   </label>
                   <input
                     type="date"
-                    value={dealForm.end_date}
-                    onChange={(e) => setDealForm({ ...dealForm, end_date: e.target.value })}
+                    value={dealForm.end_datetime}
+                    onChange={(e) => setDealForm({ ...dealForm, end_datetime: e.target.value })}
                     className="input-field text-xs"
                     required
                   />

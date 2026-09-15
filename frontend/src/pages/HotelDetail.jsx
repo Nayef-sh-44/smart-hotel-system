@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { hotelService, reviewService, bookingService, loyaltyService, favoriteService } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useComparison } from '../context/ComparisonContext.jsx';
+import { useTrip } from '../context/TripContext.jsx';
 import { useCurrency } from '../hooks/useCurrency.js';
 import { getImageUrl } from '../utils/imageUtils.js';
 import toast from 'react-hot-toast';
@@ -76,6 +77,7 @@ export default function HotelDetail() {
   const { user, isAuthenticated } = useAuth();
   const { toggleComparison, isSelected } = useComparison();
   const { symbol, formatPrice } = useCurrency();
+  const { addDestination } = useTrip();
 
   const [hotel, setHotel] = useState(null);
   const [reviews, setReviews] = useState([]);
@@ -308,6 +310,27 @@ export default function HotelDetail() {
     } finally {
       setSubmittingBooking(false);
     }
+  };
+
+  const handleAddToTripPlan = () => {
+    if (nights <= 0) {
+      toast.error('Check-out date must be after Check-in date.');
+      return;
+    }
+    const dest = {
+      hotelId: hotel.id,
+      hotelName: hotel.name,
+      roomId: selectedRoom.id,
+      roomName: selectedRoom.room_type,
+      rooms: 1,
+      guests: Number(numGuests),
+      checkIn: checkInDate,
+      checkOut: checkOutDate,
+      city: hotel.city,
+    };
+    addDestination(dest);
+    toast.success(`${hotel.name} added to your Trip Plan!`);
+    setBookingModalOpen(false);
   };
 
   const handleReviewSubmit = async (e) => {
@@ -859,6 +882,13 @@ export default function HotelDetail() {
               })()}
 
               <div className="flex items-center justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={handleAddToTripPlan}
+                  className="btn-secondary text-xs border-brand-500 text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/20"
+                >
+                  Add to Trip Plan
+                </button>
                 <button
                   type="button"
                   onClick={() => setBookingModalOpen(false)}

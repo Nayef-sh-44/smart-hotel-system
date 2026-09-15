@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Link, useNavigate } from 'react-router-dom';
-import { Hotel, Mail, Lock, ArrowRight } from 'lucide-react';
+import { Hotel, Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react';
 
 import { toast } from 'react-hot-toast';
 import api from '../services/api.js';
@@ -12,6 +12,9 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [view, setView] = useState('login');
   const [forgotData, setForgotData] = useState({ email: '', q1: '', q2: '', a1: '', a2: '', new_password: '', confirm_password: '', reset_token: '' });
 
@@ -111,13 +114,16 @@ export default function Login() {
                 <div className="relative">
                   <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <input
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="input-field pl-10 text-sm"
+                    className="input-field pl-10 pr-10 text-sm"
                   />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none">
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
 
@@ -202,11 +208,21 @@ export default function Login() {
             <form onSubmit={handleForgotSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1.5">New Password</label>
-                <input type="password" name="new_password" required value={forgotData.new_password} onChange={handleForgotChange} placeholder="********" className="input-field text-sm" />
+                <div className="relative">
+                    <input type={showNewPassword ? 'text' : 'password'} name="new_password" required value={forgotData.new_password} onChange={handleForgotChange} placeholder="********" className="input-field pr-10 text-sm" />
+                    <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none">
+                      {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1.5">Confirm Password</label>
-                <input type="password" name="confirm_password" required value={forgotData.confirm_password} onChange={handleForgotChange} placeholder="********" className="input-field text-sm" />
+                <div className="relative">
+                    <input type={showConfirmPassword ? 'text' : 'password'} name="confirm_password" required value={forgotData.confirm_password} onChange={handleForgotChange} placeholder="********" className="input-field pr-10 text-sm" />
+                    <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none">
+                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
               </div>
               <button type="submit" className="btn-primary w-full shadow-md py-3 text-sm">Reset Password</button>
             </form>

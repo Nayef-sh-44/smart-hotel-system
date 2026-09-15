@@ -54,21 +54,8 @@ export default function Loyalty() {
     }
   };
 
-  const handleRedeem = async (rewardId, hotelId) => {
-    try {
-      const res = await loyaltyService.redeemReward(rewardId, hotelId);
-      if (res.success) {
-        toast.success(res.message || 'Reward redeemed successfully!');
-        // Refresh both balances and hotel details
-        fetchBalances();
-        const detailsRes = await loyaltyService.getLoyaltyForHotel(hotelId);
-        if (detailsRes.success) {
-          setHotelDetails(prev => ({ ...prev, [hotelId]: detailsRes.data }));
-        }
-      }
-    } catch (err) {
-      toast.error(err.response?.data?.error?.message || 'Failed to redeem reward.');
-    }
+  const handleRedeem = (rewardId, hotelId) => {
+    navigate(`/hotel/${hotelId}?reward_id=${rewardId}`);
   };
 
   if (!user) {
@@ -173,7 +160,7 @@ export default function Loyalty() {
                                         : 'bg-slate-100 dark:bg-slate-800 text-slate-500 cursor-not-allowed'
                                     }`}
                                   >
-                                    Redeem Now
+                                    Use this reward for my next booking
                                   </button>
                                 </div>
                               ))}
