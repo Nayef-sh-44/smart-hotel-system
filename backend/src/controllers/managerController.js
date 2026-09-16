@@ -26,7 +26,7 @@ export const getMyHotel = async (req, res, next) => {
         { model: Room, as: 'rooms' },
         { model: DynamicPricingRule, as: 'pricingRules' },
         { model: FlashDeal, as: 'flashDeals' },
-        { model: HotelImage, RoomImage, as: 'images' },
+        { model: HotelImage, as: 'images' },
         {
           model: Review,
           as: 'reviews',
