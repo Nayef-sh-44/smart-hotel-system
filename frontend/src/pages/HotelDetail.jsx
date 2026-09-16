@@ -105,6 +105,35 @@ export default function HotelDetail() {
   const [specialRequests, setSpecialRequests] = useState('');
   const [submittingBooking, setSubmittingBooking] = useState(false);
 
+  // Pricing State
+  const [pricePreview, setPricePreview] = useState(null);
+  const [fetchingPrice, setFetchingPrice] = useState(false);
+
+  useEffect(() => {
+    if (!bookingModalOpen || !selectedRoom || !checkInDate || !checkOutDate) return;
+    const fetchPricePreview = async () => {
+      setFetchingPrice(true);
+      try {
+        const res = await hotelService.getPricePreview(id, {
+          room_id: selectedRoom.id,
+          check_in_date: checkInDate,
+          check_out_date: checkOutDate,
+          num_rooms: 1
+        });
+        if (res.success && res.data) {
+          setPricePreview(res.data);
+        }
+      } catch (err) {
+        console.error('Error fetching price preview', err);
+      } finally {
+        setFetchingPrice(false);
+      }
+    };
+    
+    const timeout = setTimeout(fetchPricePreview, 300);
+    return () => clearTimeout(timeout);
+  }, [bookingModalOpen, selectedRoom, checkInDate, checkOutDate, id]);
+
   // Review Form Modal State
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [rating, setRating] = useState(5);
@@ -806,37 +835,58 @@ export default function HotelDetail() {
                 />
               </div>
 
-              {/* Price Calculation Summary */}
+                            {/* Price Calculation Summary */}
               {(() => {
-                const rawPrice = Number(selectedRoom.price_per_night) * Math.max(1, nights);
+                if (fetchingPrice || !pricePreview) {
+                  return <div className="text-xs text-slate-500 py-4 text-center animate-pulse">Calculating pricing...</div>;
+                }
+
+                const subtotal = pricePreview.totalPrice; 
+                
                 let discount = 0;
                 if (pendingReward && pendingReward.reward && applyReward) {
                   if (pendingReward.reward.reward_type === 'percentage_discount') {
-                    discount = rawPrice * (Number(pendingReward.reward.reward_value) / 100);
+                    discount = subtotal * (Number(pendingReward.reward.reward_value) / 100);
                   } else {
-                    discount = Number(pendingReward.reward.reward_value);
+                    discount = Math.min(subtotal, Number(pendingReward.reward.reward_value));
                   }
                 }
-                const baseDiscounted = Math.max(0, rawPrice - discount);
-                const taxes = baseDiscounted * 0.03;
-                const finalTotal = baseDiscounted + taxes;
+
+                const baseDiscounted = Math.max(0, subtotal - discount);
+                const taxes = Number((baseDiscounted * 0.03).toFixed(2));
+                const finalTotal = Number((baseDiscounted + taxes).toFixed(2));
 
                 return (
                   <div className="p-4 rounded-xl bg-slate-50 dark:bg-dark-950/60 border border-slate-200 dark:border-slate-800/80 space-y-2 text-xs">
-                    <div className="flex justify-between text-slate-300">
+                    
+                    <div className="flex justify-between text-slate-700 dark:text-slate-300 mb-1">
                       <span>Room Rate ({selectedRoom.room_type})</span>
                       <span>{symbol}{formatPrice(selectedRoom.price_per_night)} / night</span>
                     </div>
-                    <div className="flex justify-between text-slate-300">
+                    
+                    <div className="flex justify-between text-slate-700 dark:text-slate-300 mb-2 pb-2 border-b border-slate-200 dark:border-slate-800/60">
                       <span>Total Nights</span>
                       <span>{nights} Night{nights > 1 ? 's' : ''}</span>
                     </div>
+
+                    {pricePreview.activeDeal && (
+                      <div className="flex justify-between text-amber-600 dark:text-amber-500 font-medium">
+                        <span>{pricePreview.activeDeal.title} Applied</span>
+                        <span>{pricePreview.activeDeal.percentage}% OFF</span>
+                      </div>
+                    )}
+
+                    <div className="flex justify-between text-slate-700 dark:text-slate-200 font-semibold pt-1">
+                      <span>Subtotal</span>
+                      <span>{symbol}{formatPrice(subtotal)}</span>
+                    </div>
+
                     {pendingReward && (
-                      <div className="flex flex-col gap-2 mt-4">
+                      <div className="flex flex-col gap-2 mt-4 mb-2">
                         {!applyReward ? (
                           <div className="bg-brand-50 dark:bg-brand-900/20 p-3 rounded-lg flex items-center justify-between border border-brand-200 dark:border-brand-800">
                             <div>
-                              <p className="text-xs font-bold text-brand-700 dark:text-brand-400">🎁 Loyalty Reward Available</p>
+                              <p className="text-xs font-bold text-brand-700 dark:text-brand-400">✨ Loyalty Reward Available</p>
                               <p className="text-[10px] text-brand-600 dark:text-brand-500">
                                 {pendingReward.reward.reward_name}
                               </p>
@@ -844,7 +894,7 @@ export default function HotelDetail() {
                             <button
                               type="button"
                               onClick={() => setApplyReward(true)}
-                              className="px-3 py-1 bg-brand-500 text-white rounded text-xs font-bold hover:bg-brand-600"
+                              className="px-3 py-1 bg-brand-500 text-white rounded text-xs font-bold hover:bg-brand-600 transition-colors"
                             >
                               Use Reward
                             </button>
@@ -852,11 +902,11 @@ export default function HotelDetail() {
                         ) : (
                           <div className="bg-emerald-50 dark:bg-emerald-900/20 p-3 rounded-lg border border-emerald-200 dark:border-emerald-800">
                             <div className="flex items-center justify-between mb-1">
-                              <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400">✓ Loyalty Reward Applied</p>
+                              <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400">✅ Loyalty Reward Applied</p>
                               <button
                                 type="button"
                                 onClick={() => setApplyReward(false)}
-                                className="text-[10px] text-emerald-600 underline hover:text-emerald-700"
+                                className="text-[10px] text-emerald-600 underline hover:text-emerald-700 transition-colors"
                               >
                                 Remove Reward
                               </button>
@@ -869,12 +919,14 @@ export default function HotelDetail() {
                         )}
                       </div>
                     )}
-                    <div className="flex justify-between text-slate-300">
+                    
+                    <div className="flex justify-between text-slate-700 dark:text-slate-300 font-medium pt-2">
                       <span>Taxes & Fees (3%)</span>
                       <span>{symbol}{formatPrice(taxes)}</span>
                     </div>
-                    <div className="flex justify-between text-slate-900 dark:text-white font-bold text-sm pt-2 border-t border-slate-200 dark:border-slate-800">
-                      <span>Final Total Estimated Price</span>
+                    
+                    <div className="flex justify-between text-slate-900 dark:text-white font-bold text-lg pt-3 border-t border-slate-300 dark:border-slate-700 mt-2">
+                      <span>Final Total</span>
                       <span>{symbol}{formatPrice(finalTotal)}</span>
                     </div>
                   </div>

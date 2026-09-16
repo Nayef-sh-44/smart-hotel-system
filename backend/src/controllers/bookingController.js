@@ -10,9 +10,11 @@ import {
   DynamicPricingRule,
   UserRewardInstance,
   LoyaltyReward,
+  FlashDeal,
   sequelize,
 } from '../models/index.js';
 import { Op } from 'sequelize';
+import { calculatePricing } from '../services/pricingService.js';
 
 const createBookingSchema = z.object({
   hotel_id: z.number().int(),
@@ -34,50 +36,6 @@ const updateBookingSchema = z.object({
   room_id: z.number().int(),
 });
 
-const calculateDynamicPrice = (checkInStr, checkOutStr, baseRoomPrice, pricingRules, numRooms = 1, country = '') => {
-  let calculatedBasePrice = 0;
-  const checkInDate = new Date(checkInStr);
-  const checkOutDate = new Date(checkOutStr);
-  let currentDate = new Date(Date.UTC(checkInDate.getUTCFullYear(), checkInDate.getUTCMonth(), checkInDate.getUTCDate()));
-  const endDate = new Date(Date.UTC(checkOutDate.getUTCFullYear(), checkOutDate.getUTCMonth(), checkOutDate.getUTCDate()));
-
-  const getSeason = (date, countryName) => {
-    const month = date.getUTCMonth() + 1;
-    const southernHemisphereCountries = ['Australia', 'Brazil', 'South Africa', 'Argentina', 'New Zealand', 'Chile', 'Peru', 'Uruguay', 'Fiji', 'Papua New Guinea'];
-    const isSouthern = southernHemisphereCountries.includes(countryName);
-
-    if (month >= 6 && month <= 8) return isSouthern ? 'Winter' : 'Summer';
-    if (month === 12 || month <= 2) return isSouthern ? 'Summer' : 'Winter';
-    if (month >= 3 && month <= 5) return isSouthern ? 'Autumn' : 'Spring';
-    return isSouthern ? 'Spring' : 'Autumn';
-  };
-
-  const getDayType = (date) => {
-    const day = date.getUTCDay();
-    // 0 = Sunday, 1 = Monday, ..., 4 = Thursday, 5 = Friday, 6 = Saturday
-    if (day === 4 || day === 5 || day === 6 || day === 0) return 'Peak';
-    return 'Normal';
-  };
-
-  while (currentDate < endDate) {
-    const season = getSeason(currentDate, country);
-    const dayType = getDayType(currentDate);
-    let dailyMultiplier = 1.0;
-
-    pricingRules.forEach((r) => {
-      if (r.rule_type === 'season' && r.rule_target === season) {
-        dailyMultiplier *= Number(r.multiplier);
-      } else if (r.rule_type === 'day_type' && r.rule_target === dayType) {
-        dailyMultiplier *= Number(r.multiplier);
-      }
-    });
-
-    calculatedBasePrice += (baseRoomPrice * dailyMultiplier * numRooms);
-    currentDate.setUTCDate(currentDate.getUTCDate() + 1);
-  }
-
-  return Number(calculatedBasePrice.toFixed(2));
-};
 
 export const createBooking = async (req, res, next) => {
   const transaction = await sequelize.transaction();
@@ -102,8 +60,12 @@ export const createBooking = async (req, res, next) => {
         {
           model: Hotel,
           as: 'hotel',
-          include: [{ model: City, as: 'city' }]
-        }
+          include: [
+            { model: City, as: 'city' },
+            { model: FlashDeal, as: 'flashDeals', where: { active_status: true }, required: false }
+          ]
+        },
+        { model: FlashDeal, as: 'flashDeals', where: { active_status: true }, required: false }
       ],
       transaction
     });
@@ -143,14 +105,17 @@ export const createBooking = async (req, res, next) => {
     });
 
     const baseRoomPrice = Number(room.price_per_night);
-    let total_price = calculateDynamicPrice(
-      validated.check_in_date,
-      validated.check_out_date,
-      baseRoomPrice,
-      pricingRules,
-      numRooms,
-      room.hotel?.city?.country
-    );
+      const flashDeals = room.hotel?.flashDeals || room.flashDeals || []; console.log("FLASH DEALS FOUND:", flashDeals.length, flashDeals.map(d=>d.title));
+      const pricingData = calculatePricing(
+        validated.check_in_date,
+        validated.check_out_date,
+        baseRoomPrice,
+        pricingRules,
+        numRooms,
+        room.hotel?.city?.country || '',
+        flashDeals
+      );
+      let total_price = pricingData.totalPrice;
 
     let promoDiscount = 0;
       let loyaltyDiscount = 0;
@@ -572,8 +537,12 @@ export const updateBooking = async (req, res, next) => {
         {
           model: Hotel,
           as: 'hotel',
-          include: [{ model: City, as: 'city' }]
-        }
+          include: [
+            { model: City, as: 'city' },
+            { model: FlashDeal, as: 'flashDeals', where: { active_status: true }, required: false }
+          ]
+        },
+        { model: FlashDeal, as: 'flashDeals', where: { active_status: true }, required: false }
       ],
       transaction
     });
@@ -617,14 +586,17 @@ export const updateBooking = async (req, res, next) => {
         transaction,
       });
 
-      let newBasePrice = calculateDynamicPrice(
+      const flashDeals = newRoom.hotel?.flashDeals || newRoom.flashDeals || [];
+      const pricingData = calculatePricing(
         validated.check_in_date,
         validated.check_out_date,
         Number(newRoom.price_per_night),
         pricingRules,
         booking.num_rooms || 1,
-        newRoom.hotel?.city?.country
+        newRoom.hotel?.city?.country || '',
+        flashDeals
       );
+      let newBasePrice = pricingData.totalPrice;
       
       newTaxAmount = Number((newBasePrice * 0.03).toFixed(2));
       newTotalPrice = Number((newBasePrice + newTaxAmount).toFixed(2));
