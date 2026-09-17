@@ -236,7 +236,17 @@ export default function Hotels() {
                     type="date"
                     min={new Date().toISOString().split('T')[0]}
                     value={checkInDate}
-                    onChange={(e) => setCheckInDate(e.target.value)}
+                    onChange={(e) => {
+                      const newCheckIn = e.target.value;
+                      setCheckInDate(newCheckIn);
+                      const start = new Date(newCheckIn);
+                      const end = new Date(checkOutDate);
+                      if (end <= start) {
+                        const nextDay = new Date(start);
+                        nextDay.setDate(start.getDate() + 1);
+                        setCheckOutDate(nextDay.toISOString().split('T')[0]);
+                      }
+                    }}
                     className="input-field text-sm w-full"
                   />
                 </div>
@@ -246,7 +256,11 @@ export default function Hotels() {
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Check-out</label>
                   <input
                     type="date"
-                    min={checkInDate || new Date().toISOString().split('T')[0]}
+                    min={
+                      checkInDate 
+                        ? (() => { const d = new Date(checkInDate); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]; })() 
+                        : (() => { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]; })()
+                    }
                     value={checkOutDate}
                     onChange={(e) => setCheckOutDate(e.target.value)}
                     className="input-field text-sm w-full"

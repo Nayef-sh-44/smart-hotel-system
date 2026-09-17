@@ -77,7 +77,7 @@ export default function HotelDetail() {
   const { user, isAuthenticated } = useAuth();
   const { toggleComparison, isSelected } = useComparison();
   const { symbol, formatPrice } = useCurrency();
-  const { addDestination } = useTrip();
+  const { addDestination, updateTripDetails } = useTrip();
 
   const [hotel, setHotel] = useState(null);
   const [reviews, setReviews] = useState([]);
@@ -92,12 +92,24 @@ export default function HotelDetail() {
   const [applyReward, setApplyReward] = useState(!!searchParams.get('reward_id'));
   const [loyaltyPoints, setLoyaltyPoints] = useState(0);
   const [checkInDate, setCheckInDate] = useState(() => {
-    if (searchParams.get('checkIn')) return searchParams.get('checkIn');
+    const ci = searchParams.get('checkIn');
+    if (ci && !isNaN(new Date(ci).getTime())) {
+      const today = new Date().toISOString().split('T')[0];
+      return ci < today ? today : ci;
+    }
     const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0];
   });
   const [checkOutDate, setCheckOutDate] = useState(() => {
-    if (searchParams.get('checkOut')) return searchParams.get('checkOut');
-    const d = new Date(); d.setDate(d.getDate() + 4); return d.toISOString().split('T')[0];
+    const co = searchParams.get('checkOut');
+    const ci = searchParams.get('checkIn') || new Date().toISOString().split('T')[0];
+    const ciDate = new Date(ci);
+    if (isNaN(ciDate.getTime())) ciDate.setTime(new Date().getTime());
+    
+    if (co && !isNaN(new Date(co).getTime())) {
+      const coDate = new Date(co);
+      if (coDate > ciDate) return co;
+    }
+    const d = new Date(ciDate); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0];
   });
   const [numGuests, setNumGuests] = useState(() => Number(searchParams.get('guests')) || 1);
   const [numRooms, setNumRooms] = useState(() => Number(searchParams.get('rooms')) || 1);
@@ -307,6 +319,11 @@ export default function HotelDetail() {
 
   const handleBookingSubmit = async (e) => {
     e.preventDefault();
+    // Raw YYYY-MM-DD comparison safely
+    if (checkOutDate <= checkInDate) {
+      toast.error('Check-out date must be after Check-in date.');
+      return;
+    }
     if (nights <= 0) {
       toast.error('Check-out date must be after Check-in date.');
       return;
@@ -358,6 +375,7 @@ export default function HotelDetail() {
       city: hotel.city,
     };
     addDestination(dest);
+    updateTripDetails({ tripType: tripType });
     toast.success(`${hotel.name} added to your Trip Plan!`);
     setBookingModalOpen(false);
   };
@@ -786,24 +804,51 @@ export default function HotelDetail() {
                     Check-in Date
                   </label>
                   <input
-                    type="date"
-                    value={checkInDate}
-                    onChange={(e) => setCheckInDate(e.target.value)}
-                    className="input-field text-xs"
-                    required
-                  />
+                      type="date"
+                      min={new Date().toISOString().split('T')[0]}
+                      value={checkInDate}
+                      onChange={(e) => {
+                        const newCheckIn = e.target.value;
+                        setCheckInDate(newCheckIn);
+                        const start = new Date(newCheckIn);
+                        const end = new Date(checkOutDate);
+                        if (end <= start) {
+                          const nextDay = new Date(start);
+                          nextDay.setDate(start.getDate() + 1);
+                          setCheckOutDate(nextDay.toISOString().split('T')[0]);
+                        }
+                      }}
+                      className="input-field text-xs"
+                      required
+                    />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
                     Check-out Date
                   </label>
                   <input
-                    type="date"
-                    value={checkOutDate}
-                    onChange={(e) => setCheckOutDate(e.target.value)}
-                    className="input-field text-xs"
-                    required
-                  />
+                      type="date"
+                      min={
+                        checkInDate 
+                          ? (() => { const d = new Date(checkInDate); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]; })() 
+                          : (() => { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]; })()
+                      }
+                      value={checkOutDate}
+                      onChange={(e) => {
+                        const newCheckOut = e.target.value;
+                        setCheckOutDate(newCheckOut);
+                        const start = new Date(checkInDate);
+                        const end = new Date(newCheckOut);
+                        if (end <= start) {
+                           // If somehow bypassed
+                           const nextDay = new Date(start);
+                           nextDay.setDate(start.getDate() + 1);
+                           setCheckOutDate(nextDay.toISOString().split('T')[0]);
+                        }
+                      }}
+                      className="input-field text-xs"
+                      required
+                    />
                 </div>
               </div>
 
