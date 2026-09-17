@@ -72,7 +72,7 @@ function MapUpdater({ selectedHotel }) {
 export default function HotelDetail() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
-  const rewardParam = searchParams.get('reward');
+  const rewardParam = searchParams.get('reward_id');
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
   const { toggleComparison, isSelected } = useComparison();
@@ -89,7 +89,7 @@ export default function HotelDetail() {
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [pendingReward, setPendingReward] = useState(null);
-  const [applyReward, setApplyReward] = useState(false);
+  const [applyReward, setApplyReward] = useState(!!searchParams.get('reward_id'));
   const [loyaltyPoints, setLoyaltyPoints] = useState(0);
   const [checkInDate, setCheckInDate] = useState(() => {
     if (searchParams.get('checkIn')) return searchParams.get('checkIn');

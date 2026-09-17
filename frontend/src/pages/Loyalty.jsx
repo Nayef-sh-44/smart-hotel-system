@@ -55,7 +55,7 @@ export default function Loyalty() {
   };
 
   const handleRedeem = (rewardId, hotelId) => {
-    navigate(`/hotel/${hotelId}?reward_id=${rewardId}`);
+    navigate(`/hotels/${hotelId}?reward_id=${rewardId}`);
   };
 
   if (!user) {
