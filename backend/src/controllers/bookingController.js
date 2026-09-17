@@ -23,7 +23,7 @@ const createBookingSchema = z.object({
   check_out_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date format YYYY-MM-DD required'),
   num_guests: z.number().int().min(1),
   special_requests: z.string().optional().nullable(),
-  num_rooms: z.number().int().min(1).max(2).optional().default(1),
+  num_rooms: z.number().int().min(1).optional().default(1),
   voucher_code: z.string().optional().nullable(),
   reward_id: z.number().int().optional().nullable(),
     instance_id: z.number().int().optional().nullable(),

@@ -4,9 +4,11 @@ import { useCurrency } from '../hooks/useCurrency.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import HotelCard from '../components/HotelCard.jsx';
 import { Search, MapPin, Sparkles, Hotel as HotelIcon, Award } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 
 export default function Hotels() {
   const { symbol, currency } = useCurrency();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [hotels, setHotels] = useState([]);
   const [recommendedHotels, setRecommendedHotels] = useState([]);
   const [cities, setCities] = useState([]);
@@ -18,26 +20,31 @@ export default function Hotels() {
   const [loadingRecs, setLoadingRecs] = useState(false);
 
   // Search state
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCity, setSelectedCity] = useState('');
-  const [starFilter, setStarFilter] = useState('');
-  const [targetPrice, setTargetPrice] = useState('');
-  const [selectedAmenities, setSelectedAmenities] = useState([]);
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
+  const [selectedCity, setSelectedCity] = useState(searchParams.get('city_id') || '');
+  const [starFilter, setStarFilter] = useState(searchParams.get('star_rating') || '');
+  const [targetPrice, setTargetPrice] = useState(searchParams.get('max_price') || '');
+  const [selectedAmenities, setSelectedAmenities] = useState(() => {
+    const am = searchParams.get('amenities');
+    return am ? am.split(',').map(Number) : [];
+  });
   
   // Rich Search State
   const [checkInDate, setCheckInDate] = useState(() => {
+    if (searchParams.get('checkIn')) return searchParams.get('checkIn');
     const d = new Date();
     d.setDate(d.getDate() + 1);
     return d.toISOString().split('T')[0];
   });
   const [checkOutDate, setCheckOutDate] = useState(() => {
+    if (searchParams.get('checkOut')) return searchParams.get('checkOut');
     const d = new Date();
     d.setDate(d.getDate() + 3);
     return d.toISOString().split('T')[0];
   });
-  const [guests, setGuests] = useState('2');
-  const [rooms, setRooms] = useState('1');
-  const [tripType, setTripType] = useState('family');
+  const [guests, setGuests] = useState(searchParams.get('guests') || '2');
+  const [rooms, setRooms] = useState(searchParams.get('rooms') || '1');
+  const [tripType, setTripType] = useState(searchParams.get('trip_type') || 'family');
 
   useEffect(() => {
     const initData = async () => {
@@ -83,6 +90,19 @@ export default function Hotels() {
       if (rooms) params.rooms = rooms;
       if (checkInDate) params.check_in = checkInDate;
       if (checkOutDate) params.check_out = checkOutDate;
+
+      const urlParams = new URLSearchParams();
+      if (searchQuery) urlParams.set('q', searchQuery);
+      if (selectedCity) urlParams.set('city_id', selectedCity);
+      if (starFilter) urlParams.set('star_rating', starFilter);
+      if (targetPrice) urlParams.set('max_price', targetPrice);
+      if (selectedAmenities.length > 0) urlParams.set('amenities', selectedAmenities.join(','));
+      if (tripType) urlParams.set('trip_type', tripType);
+      if (guests) urlParams.set('guests', guests);
+      if (rooms) urlParams.set('rooms', rooms);
+      if (checkInDate) urlParams.set('checkIn', checkInDate);
+      if (checkOutDate) urlParams.set('checkOut', checkOutDate);
+      setSearchParams(urlParams, { replace: true });
 
       const res = await hotelService.getAll(params);
       let fetchedHotels = [];
@@ -409,7 +429,7 @@ export default function Hotels() {
                       <Sparkles className="w-3 h-3" />
                       <span>{item.recommendationMatchPercentage || 0}% Match</span>
                     </div>
-                    <HotelCard tripType={tripType} hotel={item.hotel} isFavoriteInitial={userFavorites.includes(item.hotel.id)} />
+                    <HotelCard tripType={tripType} checkInDate={checkInDate} checkOutDate={checkOutDate} guests={guests} rooms={rooms} hotel={item.hotel} isFavoriteInitial={userFavorites.includes(item.hotel.id)} />
                     <div className="mt-2 text-[11px] text-slate-600 dark:text-slate-400 flex items-center gap-1.5 px-2">
                       <Award className="w-3 h-3 text-amber-500 dark:text-amber-400 shrink-0" />
                       <span className="truncate">{item.matchReasons[0]}</span>
@@ -474,7 +494,7 @@ export default function Hotels() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {hotels.map((hotel) => (
-                <HotelCard tripType={tripType} key={`all-${hotel.id}`} hotel={hotel} isFavoriteInitial={userFavorites.includes(hotel.id)} />
+                <HotelCard tripType={tripType} checkInDate={checkInDate} checkOutDate={checkOutDate} guests={guests} rooms={rooms} key={`all-${hotel.id}`} hotel={hotel} isFavoriteInitial={userFavorites.includes(hotel.id)} />
               ))}
             </div>
             )}
@@ -483,3 +503,4 @@ export default function Hotels() {
     </div>
   );
 }
+

@@ -92,16 +92,15 @@ export default function HotelDetail() {
   const [applyReward, setApplyReward] = useState(false);
   const [loyaltyPoints, setLoyaltyPoints] = useState(0);
   const [checkInDate, setCheckInDate] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 1);
-    return d.toISOString().split('T')[0];
+    if (searchParams.get('checkIn')) return searchParams.get('checkIn');
+    const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0];
   });
   const [checkOutDate, setCheckOutDate] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 4);
-    return d.toISOString().split('T')[0];
+    if (searchParams.get('checkOut')) return searchParams.get('checkOut');
+    const d = new Date(); d.setDate(d.getDate() + 4); return d.toISOString().split('T')[0];
   });
-  const [numGuests, setNumGuests] = useState(1);
+  const [numGuests, setNumGuests] = useState(() => Number(searchParams.get('guests')) || 1);
+  const [numRooms, setNumRooms] = useState(() => Number(searchParams.get('rooms')) || 1);
   const [specialRequests, setSpecialRequests] = useState('');
   const [submittingBooking, setSubmittingBooking] = useState(false);
 
@@ -118,7 +117,7 @@ export default function HotelDetail() {
           room_id: selectedRoom.id,
           check_in_date: checkInDate,
           check_out_date: checkOutDate,
-          num_rooms: 1
+          num_rooms: numRooms
         });
         if (res.success && res.data) {
           setPricePreview(res.data);
@@ -132,7 +131,7 @@ export default function HotelDetail() {
     
     const timeout = setTimeout(fetchPricePreview, 300);
     return () => clearTimeout(timeout);
-  }, [bookingModalOpen, selectedRoom, checkInDate, checkOutDate, id]);
+  }, [bookingModalOpen, selectedRoom, checkInDate, checkOutDate, numRooms, id]);
 
   // Review Form Modal State
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
@@ -320,7 +319,8 @@ export default function HotelDetail() {
           check_in_date: checkInDate,
           check_out_date: checkOutDate,
           num_guests: Number(numGuests),
-          special_requests: specialRequests,
+            num_rooms: Number(numRooms),
+            special_requests: specialRequests,
           reward_id: applyReward && pendingReward && !pendingReward.id ? pendingReward.reward.id : null,
           instance_id: applyReward && pendingReward && pendingReward.id ? pendingReward.id : null,
         });
@@ -351,7 +351,7 @@ export default function HotelDetail() {
       hotelName: hotel.name,
       roomId: selectedRoom.id,
       roomName: selectedRoom.room_type,
-      rooms: 1,
+      rooms: Number(numRooms),
       guests: Number(numGuests),
       checkIn: checkInDate,
       checkOut: checkOutDate,
@@ -807,20 +807,42 @@ export default function HotelDetail() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                  Number of Guests (Max: {selectedRoom.capacity})
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  max={selectedRoom.capacity}
-                  value={numGuests}
-                  onChange={(e) => setNumGuests(e.target.value)}
-                  className="input-field text-xs"
-                  required
-                />
-              </div>
+              <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
+                      Number of Guests (Max: {selectedRoom.capacity * numRooms})
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max={selectedRoom.capacity * numRooms}
+                      value={numGuests}
+                      onChange={(e) => setNumGuests(e.target.value)}
+                      className="input-field text-xs"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
+                      Rooms (Max: {selectedRoom.available_rooms})
+                    </label>
+                    <select
+                      value={numRooms}
+                      onChange={(e) => {
+                        const newRooms = Number(e.target.value);
+                        setNumRooms(newRooms);
+                        if (numGuests > selectedRoom.capacity * newRooms) {
+                          setNumGuests(selectedRoom.capacity * newRooms);
+                        }
+                      }}
+                      className="input-field text-xs"
+                    >
+                      {[...Array(Math.max(1, selectedRoom.available_rooms))].map((_, i) => (
+                        <option key={i + 1} value={i + 1}>{i + 1}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
 
               <div>
                 <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
@@ -860,7 +882,7 @@ export default function HotelDetail() {
                   <div className="p-4 rounded-xl bg-slate-50 dark:bg-dark-950/60 border border-slate-200 dark:border-slate-800/80 space-y-2 text-xs">
                     
                     <div className="flex justify-between text-slate-700 dark:text-slate-300 mb-1">
-                      <span>Room Rate ({selectedRoom.room_type})</span>
+                      <span>Room Rate ({selectedRoom.room_type}) x {numRooms}</span>
                       <span>{symbol}{formatPrice(selectedRoom.price_per_night)} / night</span>
                     </div>
                     

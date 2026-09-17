@@ -47,7 +47,15 @@ const getAmenityIcon = (name) => {
   return CheckCircle;
 };
 
-export default function HotelCard({ hotel, tripType = 'family', isFavoriteInitial = false, onFavoriteToggle }) {
+export default function HotelCard({ hotel, tripType = 'family', checkInDate, checkOutDate, guests, rooms, isFavoriteInitial = false, onFavoriteToggle }) {
+  const query = new URLSearchParams();
+  if (tripType) query.append('trip_type', tripType);
+  if (checkInDate) query.append('checkIn', checkInDate);
+  if (checkOutDate) query.append('checkOut', checkOutDate);
+  if (guests) query.append('guests', guests);
+  if (rooms) query.append('rooms', rooms);
+  const qs = query.toString();
+
   const { toggleComparison, isSelected } = useComparison();
   const { isAuthenticated } = useAuth();
   const { symbol, formatPrice } = useCurrency();
@@ -176,7 +184,7 @@ export default function HotelCard({ hotel, tripType = 'family', isFavoriteInitia
           </span>
         </div>
 
-        <Link to={`/hotels/${hotel.id}?trip_type=${tripType}`} className="group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
+        <Link to={`/hotels/${hotel.id}?${qs}`} className="group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
           <h3 className="text-lg font-bold text-slate-900 dark:text-white line-clamp-1 mb-2">{hotel.name}</h3>
         </Link>
 
@@ -239,7 +247,7 @@ export default function HotelCard({ hotel, tripType = 'family', isFavoriteInitia
           </div>
 
           <Link
-            to={`/hotels/${hotel.id}?trip_type=${tripType}`}
+            to={`/hotels/${hotel.id}?${qs}`}
             className="px-4 py-2 rounded-xl bg-brand-50 hover:bg-brand-100 text-brand-700 border border-brand-200 dark:bg-brand-600/20 dark:hover:bg-brand-600 dark:text-brand-400 dark:hover:text-white dark:border-brand-500/30 text-xs font-semibold transition-all flex items-center gap-1.5"
           >
             <span>View Suite</span>
@@ -250,3 +258,4 @@ export default function HotelCard({ hotel, tripType = 'family', isFavoriteInitia
     </div>
   );
 }
+
