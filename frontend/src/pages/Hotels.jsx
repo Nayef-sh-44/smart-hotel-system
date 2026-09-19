@@ -3,7 +3,7 @@ import { hotelService, cityService, recommendationService, amenityService, favor
 import { useCurrency } from '../hooks/useCurrency.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import HotelCard from '../components/HotelCard.jsx';
-import { Search, MapPin, Sparkles, Hotel as HotelIcon, Award } from 'lucide-react';
+import { Search, MapPin, Sparkles, Hotel as HotelIcon, Award, Zap, Info } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 
 export default function Hotels() {
@@ -20,6 +20,8 @@ export default function Hotels() {
   const [loadingRecs, setLoadingRecs] = useState(false);
 
   // Search state
+  const [flashOffer, setFlashOffer] = useState(searchParams.get('flash_offer') === 'true');
+  const [hasFlashOffers, setHasFlashOffers] = useState(true);
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
   const [selectedCity, setSelectedCity] = useState(searchParams.get('city_id') || '');
   const [starFilter, setStarFilter] = useState(searchParams.get('star_rating') || '');
@@ -71,7 +73,7 @@ export default function Hotels() {
 
   useEffect(() => {
     fetchHotels();
-  }, [selectedCity, starFilter, targetPrice, selectedAmenities, tripType]);
+  }, [selectedCity, starFilter, targetPrice, selectedAmenities, tripType, flashOffer]);
 
   const fetchHotels = async () => {
     setLoading(true);
@@ -102,6 +104,7 @@ export default function Hotels() {
       if (rooms) urlParams.set('rooms', rooms);
       if (checkInDate) urlParams.set('checkIn', checkInDate);
       if (checkOutDate) urlParams.set('checkOut', checkOutDate);
+        if (flashOffer) urlParams.set('flash_offer', 'true');
       setSearchParams(urlParams, { replace: true });
 
       const res = await hotelService.getAll(params);
@@ -111,7 +114,23 @@ export default function Hotels() {
       } else if (res?.success) {
         fetchedHotels = res.data;
       }
-      setHotels(fetchedHotels);
+      
+        let hasActiveFlash = false;
+        if (flashOffer) {
+          const hasFlashDeals = (h) => h.flashDeals && h.flashDeals.length > 0;
+          hasActiveFlash = fetchedHotels.some(hasFlashDeals);
+          
+          fetchedHotels.sort((a, b) => {
+            const aHas = hasFlashDeals(a);
+            const bHas = hasFlashDeals(b);
+            if (aHas && !bHas) return -1;
+            if (!aHas && bHas) return 1;
+            return 0;
+          });
+        }
+        
+        setHasFlashOffers(hasActiveFlash);
+        setHotels(fetchedHotels);
       
       const hotelIds = fetchedHotels.map(h => h.id);
         fetchRecommendations(hotelIds);
@@ -313,7 +332,21 @@ export default function Hotels() {
 
             {/* FILTER SECTION */}
             <div className="glass-panel p-5 animate-in fade-in duration-200 border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-dark-900/60 shadow-sm">
-              <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-4 uppercase tracking-wider">Filters</h3>
+              <div className="flex justify-between items-center mb-4">
+  <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">Filters</h3>
+  <label className="flex items-center gap-2 cursor-pointer group">
+    <input 
+      type="checkbox" 
+      className="form-checkbox h-4 w-4 text-brand-600 dark:text-brand-400 rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-dark-900 focus:ring-brand-500 transition-colors"
+      checked={flashOffer}
+      onChange={(e) => setFlashOffer(e.target.checked)}
+    />
+    <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors flex items-center gap-1.5">
+      <Zap className="w-4 h-4 text-amber-500 fill-amber-500/20" />
+      Flash Offers
+    </span>
+  </label>
+</div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center mb-4">
                 {/* Star Rating */}
                 <div>
@@ -465,6 +498,13 @@ export default function Hotels() {
             <h2 className="text-xl font-bold text-slate-900 dark:text-white">Explore All Hotels</h2>
             <span className="text-xs text-slate-500 dark:text-slate-400">{hotels.length} hotels found</span>
           </div>
+
+          {flashOffer && !hasFlashOffers && !loading && hotels.length > 0 && (
+            <div className="bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-300 p-3 rounded-lg mb-6 text-sm font-medium border border-brand-100 dark:border-brand-800 flex items-center gap-2">
+              <Info className="w-5 h-5 text-brand-500" />
+              No active flash offers found. Showing all available hotels.
+            </div>
+          )}
 
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">

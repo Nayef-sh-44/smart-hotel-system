@@ -133,7 +133,7 @@ export const managerService = {
   createFlashDeal: (data) => api.post('/manager/flash-deals', data),
   updateFlashDeal: (id, data) => api.put(`/manager/flash-deals/${id}`, data),
   deleteFlashDeal: (id) => api.delete(`/manager/flash-deals/${id}`),
-  getCompetitorBenchmarking: () => api.get('/manager/competitor-benchmarking'),
+  getCompetitorBenchmarking: (params) => api.get('/manager/competitor-benchmarking', { params }),
 };
 
 // Admin endpoints

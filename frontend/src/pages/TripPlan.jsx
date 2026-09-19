@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { useTrip } from '../context/TripContext';
 import { useComparison } from '../context/ComparisonContext';
 import { useNavigate } from 'react-router-dom';
@@ -12,6 +13,21 @@ export default function TripPlan() {
   const { tripPlan, removeDestination, updateDestination, updateTripDetails, clearTrip } = useTrip();
   const { currency: userCurrency, conversionRates } = useComparison();
   const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuth();
+  const [userBookings, setUserBookings] = useState([]);
+
+  useEffect(() => {
+    const fetchMyBookings = async () => {
+      if (!isAuthenticated) return;
+      try {
+        const res = await bookingService.getMyBookings();
+        if (res.success) {
+          setUserBookings(res.data);
+        }
+      } catch(e) {}
+    };
+    fetchMyBookings();
+  }, [isAuthenticated]);
   
   const [pricingResults, setPricingResults] = useState({});
   const [isCalculating, setIsCalculating] = useState(false);
@@ -180,7 +196,7 @@ export default function TripPlan() {
     // Header
     doc.setFontSize(24);
     doc.setTextColor(30, 58, 138); 
-    doc.text('HotelLink: تطبيق هوتلَ لينك لتنظيم عروض الفنادق و الرحلات', pageWidth / 2, yPos, { align: 'center' });
+    doc.text('HotelLink: Hotel Offers & Trip Organization Platform', pageWidth / 2, yPos, { align: 'center' });
     yPos += 10;
     
     doc.setFontSize(14);
@@ -475,9 +491,21 @@ export default function TripPlan() {
                         <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">{dest.city?.name || dest.city || 'City'}</h3>
                       </div>
                       <div className="flex gap-2">
-                        <button onClick={() => handleBookClick(dest)} className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-600 text-white hover:bg-brand-700 rounded-lg text-xs font-bold transition-colors shadow-sm">
+                        {userBookings.some(b => 
+                            b.hotel_id == dest.hotelId && 
+                            b.room_id == dest.roomId &&
+                            b.check_in_date?.split('T')[0] == dest.checkIn && 
+                            b.check_out_date?.split('T')[0] == dest.checkOut &&
+                            b.status !== 'cancelled'
+                          ) ? (
+                            <button disabled className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 rounded-lg text-xs font-bold transition-colors shadow-sm cursor-not-allowed">
+                              <CheckCircle className="w-3.5 h-3.5" /> Booked
+                            </button>
+                          ) : (
+                            <button onClick={() => handleBookClick(dest)} className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-600 text-white hover:bg-brand-700 rounded-lg text-xs font-bold transition-colors shadow-sm">
                           <CheckCircle className="w-3.5 h-3.5" /> Book
                         </button>
+                          )}
                         <button onClick={() => handleEditClick(dest)} className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/20 rounded transition-colors" title="Edit">
                           <Edit2 className="w-4 h-4" />
                         </button>

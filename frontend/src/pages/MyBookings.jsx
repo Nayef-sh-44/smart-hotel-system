@@ -80,6 +80,10 @@ export default function MyBookings() {
   };
 
   const handleSaveEdit = async () => {
+    if (editForm.check_out_date <= editForm.check_in_date) {
+      toast.error('Check-out date must be after Check-in date.');
+      return;
+    }
     setEditLoading(true);
     try {
       const res = await bookingService.update(editingId, {

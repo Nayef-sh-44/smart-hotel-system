@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import WeatherAndBestTime from '../components/WeatherAndBestTime.jsx';
 import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { hotelService, reviewService, bookingService, loyaltyService, favoriteService } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -726,6 +727,8 @@ export default function HotelDetail() {
           </div>
         </div>
       </section>
+
+      <WeatherAndBestTime hotel={hotel} />
 
       {/* Map Section */}
       {hotel.latitude && hotel.longitude && (
