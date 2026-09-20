@@ -1,0 +1,100 @@
+@startuml
+left to right direction
+scale 1.3
+skinparam packageStyle rectangle
+skinparam monochrome true
+skinparam shadowing false
+skinparam nodesep 20
+skinparam ranksep 60
+skinparam defaultFontSize 14
+
+title Use Case Diagram (HotelLink)
+
+actor "Guest" as Guest
+actor "Registered\nUser" as RegUser
+
+actor "System\nAdministrator" as Admin
+actor "Hotel\nManager" as Manager
+
+Guest <|-- RegUser
+
+rectangle "HotelLink System" {
+  package "1. Search & Discovery" {
+    usecase "Search & Filter Hotels" as UC_Search
+    usecase "View Hotel Details" as UC_Details
+    usecase "View Nearby Services" as UC_Nearby
+  }
+  package "2. User Account & Engagement" {
+    usecase "Register & Login" as UC_Login
+    usecase "Manage Profile" as UC_Profile
+    usecase "Change Currency" as UC_Currency
+    usecase "Manage Favorites" as UC_Favorites
+    usecase "Write & Manage Reviews" as UC_Reviews
+    usecase "Compare Hotels" as UC_Compare
+    usecase "Save Hotel Comparison" as UC_SaveCompare
+    usecase "Export Comparison (PDF)" as UC_ExportCompare
+    usecase "Create Trip Plan" as UC_TripPlan
+    usecase "Calculate Trip Cost" as UC_TripCost
+    usecase "Export Trip Plan" as UC_ExportTrip
+
+    UC_TripPlan .> UC_TripCost : <<include>>
+    UC_TripPlan .> UC_ExportTrip : <<extend>>
+    UC_Compare .> UC_SaveCompare : <<extend>>
+    UC_SaveCompare .> UC_ExportCompare : <<extend>>
+  }
+  package "3. Booking & Loyalty" {
+    usecase "Create Booking" as UC_Booking
+    usecase "Manage My Bookings" as UC_ManageBooking
+    usecase "View Recommendations" as UC_Recommendations
+    usecase "Use Loyalty Program" as UC_Loyalty
+    usecase "Redeem Loyalty Rewards" as UC_Redeem
+
+    UC_Loyalty .> UC_Redeem : <<extend>>
+  }
+  package "4. Hotel Management" {
+    usecase "Manage Hotel Profile" as UC_MgrHotel
+    usecase "Manage Rooms & Images" as UC_MgrRooms
+    usecase "Manage Room Availability" as UC_MgrAvail
+    usecase "Manage Pricing Rules" as UC_MgrPricing
+    usecase "Manage Flash Deals" as UC_MgrFlash
+    usecase "View Benchmarking" as UC_MgrBench
+    usecase "View Hotel Bookings" as UC_MgrBookings
+  }
+  package "5. System Administration" {
+    usecase "Create Hotel Manager\n(Assigns Hotel)" as UC_AdminCreateMgr
+    usecase "Delete Hotel Manager" as UC_AdminDelMgr
+    usecase "Delete Registered User" as UC_AdminDelUser
+  }
+}
+
+' Left Actor Connections
+Guest --> UC_Search
+Guest --> UC_Details
+Guest --> UC_Nearby
+
+RegUser --> UC_Login
+RegUser --> UC_Profile
+RegUser --> UC_Currency
+RegUser --> UC_Favorites
+RegUser --> UC_Reviews
+RegUser --> UC_Compare
+RegUser --> UC_TripPlan
+RegUser --> UC_Booking
+RegUser --> UC_ManageBooking
+RegUser --> UC_Recommendations
+RegUser --> UC_Loyalty
+
+' Right Actor Connections
+UC_AdminCreateMgr <-- Admin
+UC_AdminDelMgr <-- Admin
+UC_AdminDelUser <-- Admin
+
+UC_MgrHotel <-- Manager
+UC_MgrRooms <-- Manager
+UC_MgrAvail <-- Manager
+UC_MgrPricing <-- Manager
+UC_MgrFlash <-- Manager
+UC_MgrBench <-- Manager
+UC_MgrBookings <-- Manager
+
+@enduml

@@ -3,6 +3,7 @@ import { bookingService, hotelService } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useCurrency } from '../hooks/useCurrency.js';
 import { Link } from 'react-router-dom';
+import BookingDetailsModal from '../components/BookingDetailsModal.jsx';
 import toast from 'react-hot-toast';
 import {
   Hotel as HotelIcon,
@@ -25,6 +26,7 @@ export default function MyBookings() {
   const [editForm, setEditForm] = useState({ check_in_date: '', check_out_date: '', num_guests: 1, room_id: '' });
   const [availableRooms, setAvailableRooms] = useState([]);
   const [editLoading, setEditLoading] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState(null);
 
   const fetchMyBookings = async () => {
     if (!isAuthenticated) {
@@ -86,6 +88,17 @@ export default function MyBookings() {
     }
     setEditLoading(true);
     try {
+      const selectedRoom = availableRooms.find(r => r.id === Number(editForm.room_id));
+      const booking = bookings.find(b => b.id === editingId);
+      const currentNumRooms = (booking && booking.special_requests) 
+          ? (booking.special_requests.match(/\[(\d+)\s+Rooms/)?.[1] ? Number(booking.special_requests.match(/\[(\d+)\s+Rooms/)[1]) : 1)
+          : 1;
+
+      if (selectedRoom && Number(editForm.num_guests) > selectedRoom.capacity * currentNumRooms) {
+        toast.error(`Maximum capacity for ${currentNumRooms} selected room(s) is ${selectedRoom.capacity * currentNumRooms} guests.`);
+        return;
+      }
+      
       const res = await bookingService.update(editingId, {
         check_in_date: editForm.check_in_date,
         check_out_date: editForm.check_out_date,
@@ -280,7 +293,13 @@ export default function MyBookings() {
                       b.status === 'confirmed' && (
                         <div className="flex flex-col gap-2">
                           <button
-                            onClick={() => handleEditClick(b)}
+                              onClick={() => setSelectedBooking(b)}
+                              className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition-all flex items-center gap-1.5 justify-center shadow-md shadow-slate-900/10"
+                            >
+                              View Details
+                            </button>
+                            <button
+                              onClick={() => handleEditClick(b)}
                             className="px-4 py-2 rounded-xl bg-brand-50 hover:bg-brand-100 text-brand-700 border border-brand-200 text-xs font-semibold transition-all flex items-center gap-1.5 justify-center"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
@@ -301,7 +320,15 @@ export default function MyBookings() {
             ))}
           </div>
         )}
+              </div>
+        {selectedBooking && (
+          <BookingDetailsModal
+            booking={selectedBooking}
+            onClose={() => setSelectedBooking(null)}
+            symbol={symbol}
+            formatPrice={formatPrice}
+          />
+        )}
       </div>
-    </div>
-  );
+    );
 }

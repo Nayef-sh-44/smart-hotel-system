@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 794 1123" width="794" height="1123" style="background-color: white;">
+<text x="397" y="40" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#000000" text-anchor="middle" dominant-baseline="middle">Use Case Diagram (HotelLink)</text>
+<rect x="170" y="70" width="454" height="1020" fill="#ffffff" stroke="#000000" stroke-width="1.5" rx="4" />
+<text x="397" y="90" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#000000" text-anchor="middle" dominant-baseline="middle">HotelLink System</text>
+<circle cx="80" cy="150" r="10" fill="#ffffff" stroke="#000000" stroke-width="1.5"/><line x1="80" y1="160" x2="80" y2="180" stroke="#000000" stroke-width="1.5"/><line x1="65" y1="165" x2="95" y2="165" stroke="#000000" stroke-width="1.5"/><line x1="80" y1="180" x2="70" y2="200" stroke="#000000" stroke-width="1.5"/><line x1="80" y1="180" x2="90" y2="200" stroke="#000000" stroke-width="1.5"/><text x="80" y="215" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#000000" text-anchor="middle" dominant-baseline="middle">Guest</text>
+<circle cx="80" cy="500" r="10" fill="#ffffff" stroke="#000000" stroke-width="1.5"/><line x1="80" y1="510" x2="80" y2="530" stroke="#000000" stroke-width="1.5"/><line x1="65" y1="515" x2="95" y2="515" stroke="#000000" stroke-width="1.5"/><line x1="80" y1="530" x2="70" y2="550" stroke="#000000" stroke-width="1.5"/><line x1="80" y1="530" x2="90" y2="550" stroke="#000000" stroke-width="1.5"/><text x="80" y="565" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#000000" text-anchor="middle" dominant-baseline="middle">Registered&#xa;User</text>
+<circle cx="714" cy="150" r="10" fill="#ffffff" stroke="#000000" stroke-width="1.5"/><line x1="714" y1="160" x2="714" y2="180" stroke="#000000" stroke-width="1.5"/><line x1="699" y1="165" x2="729" y2="165" stroke="#000000" stroke-width="1.5"/><line x1="714" y1="180" x2="704" y2="200" stroke="#000000" stroke-width="1.5"/><line x1="714" y1="180" x2="724" y2="200" stroke="#000000" stroke-width="1.5"/><text x="714" y="215" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#000000" text-anchor="middle" dominant-baseline="middle">System&#xa;Admin</text>
+<circle cx="714" cy="600" r="10" fill="#ffffff" stroke="#000000" stroke-width="1.5"/><line x1="714" y1="610" x2="714" y2="630" stroke="#000000" stroke-width="1.5"/><line x1="699" y1="615" x2="729" y2="615" stroke="#000000" stroke-width="1.5"/><line x1="714" y1="630" x2="704" y2="650" stroke="#000000" stroke-width="1.5"/><line x1="714" y1="630" x2="724" y2="650" stroke="#000000" stroke-width="1.5"/><text x="714" y="665" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#000000" text-anchor="middle" dominant-baseline="middle">Hotel&#xa;Manager</text>
+<path d="M 80 460 L 80 240" fill="none" stroke="#000000" stroke-width="1.2" />
+<polygon points="75,240 85,240 80,230" fill="#ffffff" stroke="#000000"/>
+<rect x="190" y="110" width="190" height="160" fill="#fafafa" stroke="#cccccc" stroke-width="1.5" rx="4" />
+<text x="285.0" y="125" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#000000" text-anchor="middle" dominant-baseline="middle">Search &amp; Discovery</text>
+<rect x="410" y="110" width="190" height="160" fill="#fafafa" stroke="#cccccc" stroke-width="1.5" rx="4" />
+<text x="505.0" y="125" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#000000" text-anchor="middle" dominant-baseline="middle">System Administration</text>
+<rect x="190" y="290" width="190" height="480" fill="#fafafa" stroke="#cccccc" stroke-width="1.5" rx="4" />
+<text x="285.0" y="305" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#000000" text-anchor="middle" dominant-baseline="middle">User Account &amp; Engagement</text>
+<rect x="410" y="500" width="190" height="380" fill="#fafafa" stroke="#cccccc" stroke-width="1.5" rx="4" />
+<text x="505.0" y="515" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#000000" text-anchor="middle" dominant-baseline="middle">Hotel Management</text>
+<rect x="190" y="790" width="190" height="240" fill="#fafafa" stroke="#cccccc" stroke-width="1.5" rx="4" />
+<text x="285.0" y="805" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#000000" text-anchor="middle" dominant-baseline="middle">Booking &amp; Loyalty</text>
+<ellipse cx="285.0" cy="160.0" rx="80.0" ry="20.0" fill="#ffffff" stroke="#000000" stroke-width="1.5" /><text x="285.0" y="160.0" font-family="Arial, sans-serif" font-size="12" font-weight="normal" fill="#000000" text-anchor="middle" dominant-baseline="middle">Search &amp; Filter Hotels</text>
+<path d="M 95 170 L 205 160" fill="none" stroke="#000000" stroke-width="1.2" />
+<ellipse cx="285.0" cy="210.0" rx="80.0" ry="20.0" fill="#ffffff" stroke="#000000" stroke-width="1.5" /><text x="285.0" y="210.0" font-family="Arial, sans-serif" font-size="12" font-weight="normal" fill="#000000" text-anchor="middle" dominant-baseline="middle">View Hotel Details</text>
+<path d="M 95 170 L 205 210" fill="none" stroke="#000000" stroke-width="1.2" />
+<ellipse cx="285.0" cy="250.0" rx="80.0" ry="20.0" fill="#ffffff" stroke="#000000" stroke-width="1.5" /><text x="285.0" y="250.0" font-family="Arial, sans-serif" font-size="12" font-weight="normal" fill="#000000" text-anchor="middle" dominant-baseline="middle">View Nearby Services</text>
+<path d="M 95 170 L 205 250" fill="none" stroke="#000000" stroke-width="1.2" />
+<ellipse cx="505.0" cy="160.0" rx="80.0" ry="20.0" fill="#ffffff" stroke="#000000" stroke-width="1.5" /><text x="505.0" y="160.0" font-family="Arial, sans-serif" font-size="12" font-weight="normal" fill="#000000" text-anchor="middle" dominant-baseline="middle">Create Hotel Manager</text>
+<path d="M 699 170 L 585 160" fill="none" stroke="#000000" stroke-width="1.2" />
+<ellipse cx="505.0" cy="210.0" rx="80.0" ry="20.0" fill="#ffffff" stroke="#000000" stroke-width="1.5" /><text x="505.0" y="210.0" font-family="Arial, sans-serif" font-size="12" font-weight="normal" fill="#000000" text-anchor="middle" dominant-baseline="middle">Delete Hotel Manager</text>
+<path d="M 699 170 L 585 210" fill="none" stroke="#000000" stroke-width="1.2" />
+<ellipse cx="505.0" cy="250.0" rx="80.0" ry="20.0" fill="#ffffff" stroke="#000000" stroke-width="1.5" /><text x="505.0" y="250.0" font-family="Arial, sans-serif" font-size="12" font-weight="normal" fill="#000000" text-anchor="middle" dominant-baseline="middle">Delete Reg. User</text>
+<path d="M 699 170 L 585 250" fill="none" stroke="#000000" stroke-width="1.2" />
+<ellipse cx="285.0" cy="340.0" rx="80.0" ry="20.0" fill="#ffffff" stroke="#000000" stroke-width="1.5" /><text x="285.0" y="340.0" font-family="Arial, sans-serif" font-size="12" font-weight="normal" fill="#000000" text-anchor="middle" dominant-baseline="middle">Register &amp; Login</text>
+<path d="M 95 520 L 205 340" fill="none" stroke="#000000" stroke-width="1.2" />
+<ellipse cx="285.0" cy="380.0" rx="80.0" ry="20.0" fill="#ffffff" stroke="#000000" stroke-width="1.5" /><text x="285.0" y="380.0" font-family="Arial, sans-serif" font-size="12" font-weight="normal" fill="#000000" text-anchor="middle" dominant-baseline="middle">Manage Profile</text>
+<path d="M 95 520 L 205 380" fill="none" stroke="#000000" stroke-width="1.2" />
+<ellipse cx="285.0" cy="420.0" rx="80.0" ry="20.0" fill="#ffffff" stroke="#000000" stroke-width="1.5" /><text x="285.0" y="420.0" font-family="Arial, sans-serif" font-size="12" font-weight="normal" fill="#000000" text-anchor="middle" dominant-baseline="middle">Change Currency</text>
+<path d="M 95 520 L 205 420" fill="none" stroke="#000000" stroke-width="1.2" />
+<ellipse cx="285.0" cy="460.0" rx="80.0" ry="20.0" fill="#ffffff" stroke="#000000" stroke-width="1.5" /><text x="285.0" y="460.0" font-family="Arial, sans-serif" font-size="12" font-weight="normal" fill="#000000" text-anchor="middle" dominant-baseline="middle">Manage Favorites</text>
+<path d="M 95 520 L 205 460" fill="none" stroke="#000000" stroke-width="1.2" />
+<ellipse cx="285.0" cy="500.0" rx="80.0" ry="20.0" fill="#ffffff" stroke="#000000" stroke-width="1.5" /><text x="285.0" y="500.0" font-family="Arial, sans-serif" font-size="12" font-weight="normal" fill="#000000" text-anchor="middle" dominant-baseline="middle">Write Reviews</text>
+<path d="M 95 520 L 205 500" fill="none" stroke="#000000" stroke-width="1.2" />
+<ellipse cx="285.0" cy="540.0" rx="80.0" ry="20.0" fill="#ffffff" stroke="#000000" stroke-width="1.5" /><text x="285.0" y="540.0" font-family="Arial, sans-serif" font-size="12" font-weight="normal" fill="#000000" text-anchor="middle" dominant-baseline="middle">Compare Hotels</text>
+<path d="M 95 520 L 205 540" fill="none" stroke="#000000" stroke-width="1.2" />
+<ellipse cx="285.0" cy="580.0" rx="80.0" ry="20.0" fill="#ffffff" stroke="#000000" stroke-width="1.5" /><text x="285.0" y="580.0" font-family="Arial, sans-serif" font-size="12" font-weight="normal" fill="#000000" text-anchor="middle" dominant-baseline="middle">Export Comparison</text>
+<path d="M 95 520 L 205 580" fill="none" stroke="#000000" stroke-width="1.2" />
+<ellipse cx="285.0" cy="620.0" rx="80.0" ry="20.0" fill="#ffffff" stroke="#000000" stroke-width="1.5" /><text x="285.0" y="620.0" font-family="Arial, sans-serif" font-size="12" font-weight="normal" fill="#000000" text-anchor="middle" dominant-baseline="middle">Create Trip Plan</text>
+<path d="M 95 520 L 205 620" fill="none" stroke="#000000" stroke-width="1.2" />
+<ellipse cx="285.0" cy="680.0" rx="80.0" ry="20.0" fill="#ffffff" stroke="#000000" stroke-width="1.5" /><text x="285.0" y="680.0" font-family="Arial, sans-serif" font-size="12" font-weight="normal" fill="#000000" text-anchor="middle" dominant-baseline="middle">Calculate Trip Cost</text>
+<ellipse cx="285.0" cy="730.0" rx="80.0" ry="20.0" fill="#ffffff" stroke="#000000" stroke-width="1.5" /><text x="285.0" y="730.0" font-family="Arial, sans-serif" font-size="12" font-weight="normal" fill="#000000" text-anchor="middle" dominant-baseline="middle">Export Trip Plan</text>
+<path d="M 95 520 L 205 730" fill="none" stroke="#000000" stroke-width="1.2" />
+<ellipse cx="285.0" cy="840.0" rx="80.0" ry="20.0" fill="#ffffff" stroke="#000000" stroke-width="1.5" /><text x="285.0" y="840.0" font-family="Arial, sans-serif" font-size="12" font-weight="normal" fill="#000000" text-anchor="middle" dominant-baseline="middle">Create Booking</text>
+<path d="M 95 520 L 205 840" fill="none" stroke="#000000" stroke-width="1.2" />
+<ellipse cx="285.0" cy="890.0" rx="80.0" ry="20.0" fill="#ffffff" stroke="#000000" stroke-width="1.5" /><text x="285.0" y="890.0" font-family="Arial, sans-serif" font-size="12" font-weight="normal" fill="#000000" text-anchor="middle" dominant-baseline="middle">Manage My Bookings</text>
+<path d="M 95 520 L 205 890" fill="none" stroke="#000000" stroke-width="1.2" />
+<ellipse cx="285.0" cy="940.0" rx="80.0" ry="20.0" fill="#ffffff" stroke="#000000" stroke-width="1.5" /><text x="285.0" y="940.0" font-family="Arial, sans-serif" font-size="12" font-weight="normal" fill="#000000" text-anchor="middle" dominant-baseline="middle">View Recommendations</text>
+<path d="M 95 520 L 205 940" fill="none" stroke="#000000" stroke-width="1.2" />
+<ellipse cx="285.0" cy="990.0" rx="80.0" ry="20.0" fill="#ffffff" stroke="#000000" stroke-width="1.5" /><text x="285.0" y="990.0" font-family="Arial, sans-serif" font-size="12" font-weight="normal" fill="#000000" text-anchor="middle" dominant-baseline="middle">Use Loyalty Program</text>
+<path d="M 95 520 L 205 990" fill="none" stroke="#000000" stroke-width="1.2" />
+<ellipse cx="285.0" cy="1030.0" rx="80.0" ry="20.0" fill="#ffffff" stroke="#000000" stroke-width="1.5" /><text x="285.0" y="1030.0" font-family="Arial, sans-serif" font-size="12" font-weight="normal" fill="#000000" text-anchor="middle" dominant-baseline="middle">Redeem Rewards</text>
+<path d="M 95 520 L 205 1030" fill="none" stroke="#000000" stroke-width="1.2" />
+<ellipse cx="505.0" cy="550.0" rx="80.0" ry="20.0" fill="#ffffff" stroke="#000000" stroke-width="1.5" /><text x="505.0" y="550.0" font-family="Arial, sans-serif" font-size="12" font-weight="normal" fill="#000000" text-anchor="middle" dominant-baseline="middle">Manage Profile</text>
+<path d="M 699 620 L 585 550" fill="none" stroke="#000000" stroke-width="1.2" />
+<ellipse cx="505.0" cy="600.0" rx="80.0" ry="20.0" fill="#ffffff" stroke="#000000" stroke-width="1.5" /><text x="505.0" y="600.0" font-family="Arial, sans-serif" font-size="12" font-weight="normal" fill="#000000" text-anchor="middle" dominant-baseline="middle">Manage Rooms</text>
+<path d="M 699 620 L 585 600" fill="none" stroke="#000000" stroke-width="1.2" />
+<ellipse cx="505.0" cy="650.0" rx="80.0" ry="20.0" fill="#ffffff" stroke="#000000" stroke-width="1.5" /><text x="505.0" y="650.0" font-family="Arial, sans-serif" font-size="12" font-weight="normal" fill="#000000" text-anchor="middle" dominant-baseline="middle">Manage Availability</text>
+<path d="M 699 620 L 585 650" fill="none" stroke="#000000" stroke-width="1.2" />
+<ellipse cx="505.0" cy="700.0" rx="80.0" ry="20.0" fill="#ffffff" stroke="#000000" stroke-width="1.5" /><text x="505.0" y="700.0" font-family="Arial, sans-serif" font-size="12" font-weight="normal" fill="#000000" text-anchor="middle" dominant-baseline="middle">Manage Pricing</text>
+<path d="M 699 620 L 585 700" fill="none" stroke="#000000" stroke-width="1.2" />
+<ellipse cx="505.0" cy="750.0" rx="80.0" ry="20.0" fill="#ffffff" stroke="#000000" stroke-width="1.5" /><text x="505.0" y="750.0" font-family="Arial, sans-serif" font-size="12" font-weight="normal" fill="#000000" text-anchor="middle" dominant-baseline="middle">Manage Flash Deals</text>
+<path d="M 699 620 L 585 750" fill="none" stroke="#000000" stroke-width="1.2" />
+<ellipse cx="505.0" cy="800.0" rx="80.0" ry="20.0" fill="#ffffff" stroke="#000000" stroke-width="1.5" /><text x="505.0" y="800.0" font-family="Arial, sans-serif" font-size="12" font-weight="normal" fill="#000000" text-anchor="middle" dominant-baseline="middle">View Benchmarks</text>
+<path d="M 699 620 L 585 800" fill="none" stroke="#000000" stroke-width="1.2" />
+<ellipse cx="505.0" cy="850.0" rx="80.0" ry="20.0" fill="#ffffff" stroke="#000000" stroke-width="1.5" /><text x="505.0" y="850.0" font-family="Arial, sans-serif" font-size="12" font-weight="normal" fill="#000000" text-anchor="middle" dominant-baseline="middle">View Hotel Bookings</text>
+<path d="M 699 620 L 585 850" fill="none" stroke="#000000" stroke-width="1.2" />
+<path d="M 285 640 L 285 660" fill="none" stroke="#000000" stroke-width="1.2" stroke-dasharray="5,5" /><polyline points="275,655 285,660 275,665" fill="none" stroke="#000000" stroke-width="1.2" /><text x="285.0" y="640.0" font-family="Arial, sans-serif" font-size="12" font-weight="normal" fill="#000000" text-anchor="middle" dominant-baseline="middle">&lt;&lt;include&gt;&gt;</text>
+</svg>

@@ -1,0 +1,128 @@
+@startuml
+skinparam monochrome true
+skinparam shadowing false
+skinparam linetype ortho
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam defaultFontSize 14
+hide empty members
+
+title Class Diagram (HotelLink)
+
+package "Application Layer" {
+  class AuthController {
+    + register()
+    + login()
+  }
+  class BookingController {
+    + createBooking()
+    + getMyBookings()
+  }
+  class RecommendationController {
+    + getRecommendations()
+  }
+  class ManagerController {
+    + manageHotel()
+    + manageRooms()
+  }
+  class AdminController {
+    + createManager()
+    + deleteUser()
+  }
+}
+
+package "Business Logic" {
+  class PricingService {
+    + calculatePricing()
+  }
+  class CurrencyUtils {
+    + convertCurrency()
+  }
+}
+
+package "Domain Model" {
+  class City {
+    + id: Integer
+    + name: String
+  }
+  class Hotel {
+    + id: Integer
+    + name: String
+    + base_price_per_night: Decimal
+  }
+  class HotelImage {
+    + image_url: String
+  }
+  class DynamicPricingRule {
+    + multiplier: Decimal
+  }
+  class FlashDeal {
+    + discount_percentage: Decimal
+  }
+  class Room {
+    + id: Integer
+    + room_type: String
+    + price_per_night: Decimal
+  }
+  class RoomImage {
+    + image_url: String
+  }
+  class Amenity {
+    + name: String
+  }
+  class Booking {
+    + id: Integer
+    + check_in_date: Date
+    + total_price: Decimal
+  }
+  class User {
+    + id: Integer
+    + full_name: String
+    + role: Enum
+  }
+  class Review {
+    + overall_rating: Integer
+  }
+  class Favorite {
+    + id: Integer
+  }
+  class UserLoyalty {
+    + current_points: Integer
+  }
+}
+
+' Controller 2-Column Layout
+AuthController -[hidden]right- BookingController
+RecommendationController -[hidden]right- ManagerController
+AuthController -[hidden]down- RecommendationController
+BookingController -[hidden]down- ManagerController
+RecommendationController -[hidden]down- AdminController
+AdminController -[hidden]right- PricingService
+
+' Connect Layers vertically
+AdminController -down-> PricingService : uses >
+PricingService -[hidden]right- CurrencyUtils
+
+' Connect to Domain Model
+PricingService -down-> City : queries >
+
+' Core Domain Structure (Central Vertical)
+City "1" -down- "*" Hotel : locates >
+Hotel "1" -down- "*" Room : contains >
+Room "1" -down- "*" Booking : booked via >
+Booking "*" -down- "1" User : makes <
+
+' Domain Side-branches
+Hotel "1" -left- "*" HotelImage : has >
+Hotel "1" -right- "*" DynamicPricingRule : applies >
+Hotel "1" -right- "*" FlashDeal : hosts >
+
+Room "1" -left- "*" RoomImage : has >
+Room "*" -right- "*" Amenity : provides >
+
+User "1" -left- "*" Review : writes >
+User "1" -down- "*" Favorite : saves >
+User "1" -right- "*" UserLoyalty : earns >
+
+Hotel "1" -- "*" Review : receives >
+@enduml

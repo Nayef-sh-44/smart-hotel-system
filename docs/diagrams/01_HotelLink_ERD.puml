@@ -1,0 +1,195 @@
+@startuml
+skinparam monochrome true
+skinparam shadowing false
+skinparam linetype ortho
+skinparam nodesep 40
+skinparam ranksep 50
+hide circle
+
+title Entity Relationship Diagram (HotelLink)
+
+entity City {
+  * id : INT [PK]
+  --
+  * name : VARCHAR
+  country : VARCHAR
+}
+
+entity TouristAttraction {
+  * id : INT [PK]
+  --
+  * city_id : INT [FK]
+  name : VARCHAR
+}
+
+entity NearbyService {
+  * id : INT [PK]
+  --
+  * city_id : INT [FK]
+  name : VARCHAR
+}
+
+entity Hotel {
+  * id : INT [PK]
+  --
+  * name : VARCHAR
+  * city_id : INT [FK]
+  base_price_per_night : DECIMAL
+  star_rating : INT
+}
+
+entity HotelImage {
+  * id : INT [PK]
+  --
+  * hotel_id : INT [FK]
+  image_url : VARCHAR
+}
+
+entity DynamicPricingRule {
+  * id : INT [PK]
+  --
+  * hotel_id : INT [FK]
+  multiplier : DECIMAL
+}
+
+entity FlashDeal {
+  * id : INT [PK]
+  --
+  hotel_id : INT [FK]
+  room_id : INT [FK]
+  discount_percentage : DECIMAL
+}
+
+entity Room {
+  * id : INT [PK]
+  --
+  * hotel_id : INT [FK]
+  * room_type : VARCHAR
+  price_per_night : DECIMAL
+  capacity : INT
+  available_rooms : INT
+  status : ENUM
+}
+
+entity RoomImage {
+  * id : INT [PK]
+  --
+  * room_id : INT [FK]
+  image_url : VARCHAR
+}
+
+entity Amenity {
+  * id : INT [PK]
+  --
+  name : VARCHAR
+}
+
+entity HotelAmenity {
+  * hotel_id : INT [FK, PK]
+  * amenity_id : INT [FK, PK]
+}
+
+entity RoomAmenity {
+  * room_id : INT [FK, PK]
+  * amenity_id : INT [FK, PK]
+}
+
+entity Booking {
+  * id : INT [PK]
+  --
+  * booking_reference : VARCHAR
+  * user_id : INT [FK]
+  * hotel_id : INT [FK]
+  * room_id : INT [FK]
+  check_in_date : DATE
+  check_out_date : DATE
+  num_guests : INT
+  total_price : DECIMAL
+  status : ENUM
+}
+
+entity User {
+  * id : INT [PK]
+  --
+  * full_name : VARCHAR
+  * email : VARCHAR
+  * role : ENUM
+  preferred_currency : VARCHAR
+}
+
+entity Review {
+  * id : INT [PK]
+  --
+  * user_id : INT [FK]
+  * hotel_id : INT [FK]
+  overall_rating : INT
+}
+
+entity Favorite {
+  * id : INT [PK]
+  --
+  * user_id : INT [FK]
+  * hotel_id : INT [FK]
+}
+
+entity SavedComparison {
+  * id : INT [PK]
+  --
+  * user_id : INT [FK]
+}
+
+entity LoyaltyReward {
+  * id : INT [PK]
+  --
+  * hotel_id : INT [FK]
+  points_cost : INT
+}
+
+entity UserLoyalty {
+  * id : INT [PK]
+  --
+  * user_id : INT [FK]
+  current_points : INT
+}
+
+entity LoyaltyTransaction {
+  * id : INT [PK]
+  --
+  * user_id : INT [FK]
+  points : INT
+}
+
+' Layout Engine Guidelines
+City ||-down-o{ Hotel
+City ||-left-o{ NearbyService
+City ||-right-o{ TouristAttraction
+
+Hotel ||-down-o{ Room
+Hotel ||-right-o{ HotelImage
+Hotel ||-left-o{ DynamicPricingRule
+
+Room ||-down-o{ Booking
+Room ||-right-o{ RoomImage
+Room ||-left-o{ FlashDeal
+Hotel ||--o{ FlashDeal
+
+Amenity ||-down-o{ HotelAmenity
+Hotel ||-left-o{ HotelAmenity
+Amenity ||-down-o{ RoomAmenity
+Room ||-left-o{ RoomAmenity
+
+Booking }o-down-|| User
+
+User ||-left-o{ Review
+Hotel ||--o{ Review
+
+User ||-right-o{ Favorite
+Hotel ||--o{ Favorite
+
+User ||-down-o{ SavedComparison
+
+User ||-down-o{ UserLoyalty
+User ||-down-o{ LoyaltyTransaction
+Hotel ||--o{ LoyaltyReward
+
+@enduml

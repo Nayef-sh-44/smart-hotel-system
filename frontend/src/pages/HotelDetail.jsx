@@ -674,7 +674,7 @@ export default function HotelDetail() {
               </div>
               <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-300">
                 <span>Loyalty Points Earned</span>
-                <span className="text-brand-400 font-semibold">10 Points / {symbol}10</span>
+                <span className="text-brand-400 font-semibold">1 Point / {symbol}10 spent</span>
               </div>
             </div>
           </div>
@@ -858,7 +858,7 @@ export default function HotelDetail() {
               <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                      Number of Guests (Max: {selectedRoom.capacity * numRooms})
+                      Number of Guests
                     </label>
                     <input
                       type="number"
@@ -1020,7 +1020,7 @@ export default function HotelDetail() {
                 </button>
                 <button
                   type="submit"
-                  disabled={submittingBooking || nights <= 0}
+                  disabled={submittingBooking || nights <= 0 || numGuests > selectedRoom.capacity * numRooms}
                   className="btn-primary text-xs"
                 >
                   {submittingBooking ? 'Confirming...' : 'Confirm Reservation'}
